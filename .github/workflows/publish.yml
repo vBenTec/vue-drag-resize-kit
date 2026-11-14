@@ -1,0 +1,38 @@
+name: Publish
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  id-token: write # npm trusted publishing (OIDC) and provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm fmt:check
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: Check that the tag matches package.json
+        run: test "v$(node -p 'require("./package.json").version')" = "$GITHUB_REF_NAME"
+      - name: Publish
+        # Prereleases go to their own dist-tag (1.0.0-beta.0 -> beta) so they never claim `latest`.
+        # prepublishOnly runs the build and check:pkg.
+        run: |
+          version=$(node -p 'require("./package.json").version')
+          case "$version" in
+            *-*) pre=${version#*-}; tag=${pre%%.*} ;;
+            *) tag=latest ;;
+          esac
+          npm publish --provenance --access public --tag "$tag"
