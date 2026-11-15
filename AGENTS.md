@@ -14,12 +14,14 @@ Domain terms (gesture, guides, member, snap session) are defined in `GLOSSARY.md
 
 ## Commands (pnpm only)
 
-- `pnpm test`: Vitest (happy-dom). Tests sit next to their source as `*.test.ts`.
+- `pnpm test`: Vitest unit project (happy-dom). Tests sit next to their source as `*.test.ts`.
+- `pnpm test:browser`: Vitest browser project (Playwright Chromium), `*.browser.test.ts`. Run
+  `pnpm exec playwright install chromium` once first.
 - `pnpm typecheck`: vue-tsc
 - `pnpm lint` / `pnpm fmt`: oxlint / oxfmt (not ESLint/Prettier)
 - `pnpm build && pnpm check:pkg`: build and validate the package
 
-Before you finish, run what CI runs: `pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:pkg`.
+Before you finish, run what CI runs: `pnpm fmt:check && pnpm lint && pnpm typecheck && pnpm test && pnpm test:browser && pnpm build && pnpm check:pkg`.
 
 ## Conventions
 

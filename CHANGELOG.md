@@ -6,6 +6,33 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- `layout` prop (`'absolute' | 'flow'`, default `'absolute'`): `flow` keeps the element in
+  normal document flow (`position: relative; display: inline-block`) for content such as inline
+  editor images. In flow, `x` / `y` are ignored, dragging is inert, `parent` is ignored, and
+  resizing never moves the element — `t` / `l` handles grow the size by the usual delta while the
+  element extends per its flow position. Exported as `LayoutMode`.
+- Natural content sizing in flow layout: a dimension whose model is `0` renders at its content's
+  responsive size, which is synced back into `v-model:w` / `v-model:h` (fractional, without
+  resize events) and keeps tracking the layout — e.g. through an async image load — until the
+  dimension is resized or written from outside. Writing `0` makes it natural again.
+- `boundary` prop: cap the size at the content box of any element (CSS selector resolved via
+  `closest`, element, ref or getter). Size-only, re-measured when the boundary resizes and when a
+  gesture starts; in flow layout only the width is capped. Exported as `BoundaryTarget`.
+- A real-browser (Chromium) test project: `pnpm test:browser`, run in CI.
+
+### Changed
+
+- **Drag / resize events require movement.** `drag-start` / `resize-start` are emitted on the
+  first actual pointer movement instead of the press, and `*-end` only after a `*-start`:
+  pressing and releasing without moving emits no events and writes no models. The
+  `data-dragging` / `data-resizing` attributes still flip on the press.
+- **The selection frame is an outline, not a border.** The frame no longer contributes to the
+  box model: `w` / `h` now equal the element's true content size, and activation cannot shift
+  the content or its neighbours. The `--vdr-border-color` / `--vdr-border-width` properties are
+  kept and style the outline; consumer `border: 0` workarounds can be dropped.
+
 ## 1.0.0 — 2026-11-14
 
 First release of `vue-drag-resize-kit`, a rewrite of `vue3-draggable-resizable` in

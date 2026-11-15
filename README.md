@@ -14,9 +14,11 @@
 > TypeScript support.
 
 - Drag and resize with mouse, touch and pen (Pointer Events)
-- Restrict movement and size to the parent element
+- Restrict movement and size to the parent element, or cap the size at any `boundary` element
 - Min / max sizes, locked axes, locked aspect ratio
 - Snapping to other elements, the parent and custom guides, drawn live while dragging
+- Flow layout for content that stays in the document flow (inline editor images), with natural
+  content sizing
 - Fully typed props, events and `v-model`s
 - No runtime dependencies, ESM, SSR-safe, themeable with CSS custom properties
 
@@ -31,6 +33,7 @@ Originally forked from `vue3-draggable-resizable` and rewritten from scratch. Sw
   - [Props](#props)
   - [Models](#models)
   - [Events](#events)
+- [Inline images / document flow](#inline-images--document-flow) (`layout="flow"`, `boundary`)
 - [DraggableContainer](#draggablecontainer) (snapping)
 - [Styling](#styling)
 - [TypeScript](#typescript)
@@ -101,9 +104,11 @@ non-static position). Import the stylesheet once, anywhere in your app.
 | -------------------- | ------------------------- | --------------- | ------------------------------------------------------------------------------------------------------ |
 | `initW`              | `number`                  | `0`             | Initial width in px, used while `w` is not set.                                                        |
 | `initH`              | `number`                  | `0`             | Initial height in px, used while `h` is not set.                                                       |
-| `draggable`          | `boolean`                 | `true`          | Whether the element can be dragged.                                                                    |
+| `layout`             | `'absolute' \| 'flow'`    | `'absolute'`    | How the element is positioned. See [Inline images / document flow](#inline-images--document-flow).     |
+| `draggable`          | `boolean`                 | `true`          | Whether the element can be dragged. Ignored with `layout="flow"`.                                      |
 | `resizable`          | `boolean`                 | `true`          | Whether the element can be resized.                                                                    |
-| `parent`             | `boolean`                 | `false`         | Restrict movement and size to the parent element.                                                      |
+| `parent`             | `boolean`                 | `false`         | Restrict movement and size to the parent element. Ignored with `layout="flow"`.                        |
+| `boundary`           | `BoundaryTarget`          | —               | Cap the size at another element's content box. See [the `boundary` prop](#the-boundary-prop).          |
 | `minW`               | `number`                  | `20`            | Minimum width in px.                                                                                   |
 | `minH`               | `number`                  | `20`            | Minimum height in px.                                                                                  |
 | `maxW`               | `number`                  | —               | Maximum width in px.                                                                                   |
@@ -159,16 +164,21 @@ interacts with something else (a toolbar, say), stop the event there:
 
 ### Events
 
-| Event          | Payload         | When                                          |
-| -------------- | --------------- | --------------------------------------------- |
-| `activated`    | —               | The element became active.                    |
-| `deactivated`  | —               | The element became inactive.                  |
-| `drag-start`   | `DragPayload`   | The pointer went down on a draggable element. |
-| `dragging`     | `DragPayload`   | On every move while dragging.                 |
-| `drag-end`     | `DragPayload`   | The pointer was released or cancelled.        |
-| `resize-start` | `ResizePayload` | The pointer went down on a handle.            |
-| `resizing`     | `ResizePayload` | On every move while resizing.                 |
-| `resize-end`   | `ResizePayload` | The pointer was released or cancelled.        |
+| Event          | Payload         | When                                                        |
+| -------------- | --------------- | ----------------------------------------------------------- |
+| `activated`    | —               | The element became active.                                  |
+| `deactivated`  | —               | The element became inactive.                                |
+| `drag-start`   | `DragPayload`   | The pointer first moved after going down on the element.    |
+| `dragging`     | `DragPayload`   | On every move while dragging.                               |
+| `drag-end`     | `DragPayload`   | The pointer was released or cancelled, after `drag-start`.  |
+| `resize-start` | `ResizePayload` | The pointer first moved after going down on a handle.       |
+| `resizing`     | `ResizePayload` | On every move while resizing.                               |
+| `resize-end`   | `ResizePayload` | The pointer was released or cancelled, after `resize-start` |
+
+A gesture starts with the first actual pointer movement: pressing an element or a handle and
+releasing without moving emits no events (and writes no models), so persisting on `*-end` never
+fires for a plain click. The `data-dragging` / `data-resizing` attributes still flip on the press,
+for visual feedback.
 
 ```ts
 type DragPayload = { x: number; y: number }
@@ -178,6 +188,130 @@ type ResizePayload = { x: number; y: number; w: number; h: number }
 ### Slots
 
 The default slot is the element's content.
+
+## Inline images / document flow
+
+`layout="flow"` keeps the element in normal document flow — the mode for content that belongs to
+a text, such as a resizable image in a rich-text editor. The element occupies space, pushes the
+following content down as it grows, and never overlaps its surroundings:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+import { DraggableResizable, type ResizePayload } from 'vue-drag-resize-kit'
+
+import 'vue-drag-resize-kit/style.css'
+
+const w = ref(0) // 0 = natural: the image renders at its responsive size
+const h = ref(0)
+
+const persist = ({ w, h }: ResizePayload) => save({ width: w, height: h })
+</script>
+
+<template>
+  <div class="editor">
+    <p>Some text before the image…</p>
+    <DraggableResizable
+      layout="flow"
+      boundary=".editor"
+      lock-aspect-ratio
+      v-model:w="w"
+      v-model:h="h"
+      @resize-end="persist"
+    >
+      <img src="photo.jpg" style="display: block; width: 100%; height: 100%" />
+    </DraggableResizable>
+    <p>…and after it.</p>
+  </div>
+</template>
+```
+
+In flow layout:
+
+- The root renders `position: relative; display: inline-block` (via
+  `.vdr-container[data-layout='flow']`). `inline-block` is required for natural sizing — the
+  element shrinks to fit its content; override it with plain CSS (e.g. `display: block`) if it
+  should fill its line instead.
+- **The browser owns the position.** `x` / `y` are ignored, dragging is silently inert, and
+  resizing never moves the element: `t` / `l` handles grow the size by the usual pointer delta,
+  and the element extends per its flow position (in absolute layout they move the element to keep
+  the opposite edge in place). All eight handles stay usable; `tr` cannot displace the element
+  upwards.
+- `parent` is ignored — its measured element is the immediate wrapper, which usually tracks the
+  content itself. Use [`boundary`](#the-boundary-prop) to cap the size.
+- Give the slotted image `display: block; width: 100%; height: 100%` so it always fills the
+  frame — both while natural (the frame shrinks to the image's responsive size) and once sized.
+- When the component is not mounted (e.g. the editor shows a plain `<img>` outside of resize
+  mode), display the persisted size yourself, responsive constraints included:
+  `width: <saved>px; height: auto; max-width: 100%`.
+
+### Natural sizing
+
+In flow layout, a dimension whose model is `0` (the default) is **natural**: it gets no inline
+size, the content renders at its responsive size, and the component syncs the rendered
+(fractional) size back into `v-model:w` / `v-model:h` — without emitting resize events, so
+mounting, selecting or an image finishing to load never looks like a user resize. The element
+stays responsive (a natural dimension keeps following the layout, e.g. through an async image
+load) until that dimension is actually written from outside the sync:
+
+- the first movement of a resize gesture makes the gestured dimensions explicit, and
+- an external write makes a dimension explicit — writing `0` makes it natural again.
+
+Each dimension is tracked separately: `v-model:w="500"` with `h` left at `0` gives a fixed width
+and a height that keeps tracking the content. `initW` / `initH` make the size explicit from the
+start. Natural sizing is not available in absolute layout, which keeps its documented no-auto-size
+contract.
+
+> **Caveat:** a `v-model` handler that transforms the synced value (e.g. rounds it) writes back a
+> _different_ value — an external write, which ends naturalness on the spot. Keep the models
+> verbatim and persist (round, convert) in your `resize-end` handler instead, which only fires for
+> real gestures.
+
+### The `boundary` prop
+
+`boundary` caps the size at the content box of another element — typically the editor column,
+table cell or other containing block, which is rarely the immediate parent:
+
+```ts
+type BoundaryTarget = string | HTMLElement | Ref<HTMLElement | null> | (() => HTMLElement | null)
+```
+
+A string is resolved against the component's ancestors with `closest()`. The cap follows the
+boundary resizing (`ResizeObserver`) and is re-measured when a gesture starts, so a boundary that
+changed before activation or while active caps the next gesture correctly; constraints are read on
+every move, so a cap that changes mid-gesture applies live. The element never moves or shrinks by
+itself when the boundary shrinks — the next gesture clamps. `minW` / `minH` win over a smaller
+cap. In flow layout only the width is capped (documents grow with their content; with
+`lock-aspect-ratio` the width cap bounds the height anyway); in absolute layout both dimensions
+are capped.
+
+`boundary` and `parent` differ:
+
+|                | `parent`              | `boundary`                                   |
+| -------------- | --------------------- | -------------------------------------------- |
+| Element        | the immediate parent  | any element (selector, element, ref, getter) |
+| Measures       | the padding box       | the content box (paddings subtracted)        |
+| Constrains     | position **and** size | size only                                    |
+| In flow layout | ignored               | caps the width                               |
+
+### Migrating from manual integration overrides
+
+If you integrated `1.0.0` into an editor with consumer-side workarounds, flow layout replaces
+them:
+
+- **Drop `position: relative !important; display: inline-block !important`** overrides on
+  `.vdr-container` — `layout="flow"` renders exactly that.
+- **Drop `border: 0 !important`** — the selection frame is an outline and no longer contributes
+  to the box model, so it cannot shrink the content; the dashed frame is back for free.
+- **Drop measuring the image before mounting** (`getBoundingClientRect` + passing `w`/`h`) —
+  leave the models at `0` and natural sizing seeds them with the displayed size, fractional,
+  without fake resize events.
+- **Drop computing `max-width` from an ancestor's `clientWidth` minus paddings** — pass the
+  ancestor to `boundary` and the component measures its content box itself, live.
+- **Restore the `tr` handle** — flow resizing never moves the element, so the upward displacement
+  that forced its removal cannot happen.
+- **Keep persisting on `resize-end`** — it now only fires for real gestures, never for a
+  motionless press.
 
 ## DraggableContainer
 
@@ -225,9 +359,15 @@ The stylesheet is small and unscoped. Everything is prefixed with `vdr-`:
 | `.vdr-container[data-active]`         | … while active.                             |
 | `.vdr-container[data-dragging]`       | … while dragging.                           |
 | `.vdr-container[data-resizing]`       | … while resizing (the value is the handle). |
+| `.vdr-container[data-layout='flow']`  | … with `layout="flow"`.                     |
 | `.vdr-handle`, `.vdr-handle-<handle>` | A resize handle.                            |
 | `.vdr-snap-container`                 | The `DraggableContainer` root.              |
 | `.vdr-guide`, `.vdr-guide-x`, `-y`    | A guide (`-x` vertical, `-y` horizontal).   |
+
+The selection frame is drawn as an `outline` (dashed while active, solid while dragging), not a
+border: it never contributes to the box model, so `w` / `h` always equal the element's true
+content size and activating an element cannot shift its content or its neighbours. The historical
+`--vdr-border-*` property names are kept and style the outline.
 
 Theme it with CSS custom properties, set on the element or any ancestor:
 
@@ -273,6 +413,8 @@ import type {
   ResizePayload, // { x, y, w, h }
   Rect, // { x, y, w, h }
   ResizeHandle, // 'tl' | 'tm' | 'tr' | 'ml' | 'mr' | 'bl' | 'bm' | 'br'
+  LayoutMode, // 'absolute' | 'flow'
+  BoundaryTarget, // string | HTMLElement | Ref<HTMLElement | null> | (() => HTMLElement | null)
 } from 'vue-drag-resize-kit'
 
 const handles: ResizeHandle[] = ['tl', 'br']
@@ -353,7 +495,9 @@ The full list is in the [changelog](CHANGELOG.md).
 ```bash
 pnpm install
 pnpm dev-vue     # playground
-pnpm test        # unit, component and type tests
+pnpm test        # unit, component and type tests (happy-dom)
+pnpm exec playwright install chromium
+pnpm test:browser # real-browser tests (Chromium)
 pnpm typecheck
 pnpm lint && pnpm fmt:check
 pnpm build && pnpm check:pkg
