@@ -168,16 +168,17 @@ const handleClasses = (handle: ResizeHandle) => [
 .vdr-container {
   position: absolute;
   box-sizing: border-box;
-  border: var(--vdr-border-width, 1px) solid transparent;
 }
 
+/* An outline, not a border: the frame never contributes to the box model, so `w` / `h` always
+   equal the true content size. Drawn inwards, in the band the old inside border occupied. */
 .vdr-container[data-active] {
-  border-color: var(--vdr-border-color, #000);
-  border-style: dashed;
+  outline: var(--vdr-border-width, 1px) dashed var(--vdr-border-color, #000);
+  outline-offset: calc(-1 * var(--vdr-border-width, 1px));
 }
 
 .vdr-container[data-dragging] {
-  border-style: solid;
+  outline-style: solid;
 }
 
 .vdr-container[data-dragging],
