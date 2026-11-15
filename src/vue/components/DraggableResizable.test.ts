@@ -504,6 +504,83 @@ describe('natural sizing (flow)', () => {
   })
 })
 
+/**
+ * Mounts a 100x50 element inside an image-sized wrapper inside a padded 600x400 editor, whose
+ * content box is 560x360.
+ */
+const mountWithBoundary = (props: Props = {}) => {
+  const editor = document.createElement('div')
+  editor.className = 'editor'
+  editor.style.padding = '20px'
+  setInnerSize(editor, 600, 400)
+  const host = document.createElement('div')
+  editor.appendChild(host)
+  document.body.appendChild(editor)
+
+  const wrapper = mount(DraggableResizable, {
+    attachTo: host,
+    props: { w: 100, h: 50, active: true, boundary: '.editor', ...props },
+  })
+  return { wrapper, editor }
+}
+
+describe('boundary', () => {
+  it('caps the size at the boundary content box, resolved by selector', async () => {
+    const { wrapper } = mountWithBoundary()
+
+    await dragBy(handle(wrapper, 'br'), 1000, 1000)
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([560])
+    expect(wrapper.emitted('update:h')?.at(-1)).toEqual([360])
+  })
+
+  it('accepts the element itself (or a getter) as the boundary', async () => {
+    const editor = document.createElement('div')
+    setInnerSize(editor, 600, 400)
+    document.body.appendChild(editor)
+    const { wrapper } = mountWithBoundary({ boundary: () => editor })
+
+    await dragBy(handle(wrapper, 'br'), 1000, 1000)
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([600])
+  })
+
+  it('does not cap the height in flow', async () => {
+    const { wrapper } = mountWithBoundary({ layout: 'flow' })
+
+    await dragBy(handle(wrapper, 'br'), 1000, 1000)
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([560])
+    expect(wrapper.emitted('update:h')?.at(-1)).toEqual([1050])
+  })
+
+  it('does not cap anything while the boundary does not resolve', async () => {
+    const { wrapper } = mountWithBoundary({ boundary: '.missing' })
+
+    await dragBy(handle(wrapper, 'br'), 1000, 1000)
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([1100])
+  })
+
+  it('applies a shrunken boundary at the next gesture, never by itself', async () => {
+    const { wrapper, editor } = mountWithBoundary()
+
+    await dragBy(handle(wrapper, 'br'), 1000, 0)
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([560])
+
+    // The boundary shrinks to a 260px content box; the element must not move or shrink itself.
+    setInnerSize(editor, 300, 400)
+    await nextTick()
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([560])
+
+    await dragBy(handle(wrapper, 'br'), 10, 0)
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([260])
+  })
+
+  it('lets minW win over a smaller cap', async () => {
+    const { wrapper } = mountWithBoundary({ w: 650, minW: 600 })
+
+    await dragBy(handle(wrapper, 'br'), -1000, 0)
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([600])
+  })
+})
+
 describe('gesture hygiene', () => {
   it('emits no drag events and no model writes for a motionless press', async () => {
     const wrapper = mountElement()

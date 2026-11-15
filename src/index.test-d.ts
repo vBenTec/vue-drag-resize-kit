@@ -1,12 +1,15 @@
 import { describe, expectTypeOf, it } from 'vitest'
+import type { Ref } from 'vue'
 
 import {
   DraggableContainer,
   DraggableResizable,
+  type BoundaryTarget,
   type DraggableContainerProps,
   type DraggableResizableEmits,
   type DraggableResizableProps,
   type DragPayload,
+  type LayoutMode,
   type Rect,
   type ResizeHandle,
   type ResizePayload,
@@ -29,6 +32,13 @@ describe('DraggableResizable', () => {
   it('types its props', () => {
     expectTypeOf<Props['handles']>().toEqualTypeOf<readonly ResizeHandle[] | undefined>()
     expectTypeOf<Props['parent']>().toEqualTypeOf<boolean | undefined>()
+    expectTypeOf<Props['layout']>().toEqualTypeOf<LayoutMode | undefined>()
+    expectTypeOf<Props['layout']>().toEqualTypeOf<'absolute' | 'flow' | undefined>()
+    expectTypeOf<Props['boundary']>().toEqualTypeOf<BoundaryTarget | undefined>()
+    expectTypeOf<string>().toExtend<BoundaryTarget>()
+    expectTypeOf<HTMLElement>().toExtend<BoundaryTarget>()
+    expectTypeOf<Ref<HTMLElement | null>>().toExtend<BoundaryTarget>()
+    expectTypeOf<() => HTMLElement | null>().toExtend<BoundaryTarget>()
     expectTypeOf<Props['minW']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<Props['maxW']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<Props['maxH']>().toEqualTypeOf<number | undefined>()
@@ -81,6 +91,8 @@ describe('DraggableResizable', () => {
     expectTypeOf<{ handles: ['tl', ''] }>().not.toExtend<Props>()
     expectTypeOf<{ handles: string[] }>().not.toExtend<Props>()
     expectTypeOf<{ parent: 'yes' }>().not.toExtend<Props>()
+    expectTypeOf<{ layout: 'inline' }>().not.toExtend<Props>()
+    expectTypeOf<{ boundary: 42 }>().not.toExtend<Props>()
     expectTypeOf<{ x: '10' }>().not.toExtend<Props>()
     expectTypeOf<{ 'onDrag-end': (event: MouseEvent) => void }>().not.toExtend<Props>()
   })

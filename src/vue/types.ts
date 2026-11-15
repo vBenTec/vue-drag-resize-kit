@@ -1,6 +1,7 @@
 import type { EmitFn, ShortEmitsToObject } from 'vue'
 
 import type { Guides, Point, Rect, ResizeHandle, Size } from '../core/types'
+import type { BoundaryTarget } from './composables/useBoundarySize'
 
 /**
  * How the element is positioned.
@@ -44,8 +45,17 @@ export interface DraggableResizableProps {
   maxW?: number
   /** Maximum height (px). @default Infinity */
   maxH?: number
-  /** Restrict movement and size to the parent element. */
+  /** Restrict movement and size to the parent element. Ignored with `layout="flow"`. */
   parent?: boolean
+  /**
+   * Cap the size at the content box of another element (any ancestor, or an unrelated element):
+   * a CSS selector matched against the ancestors via `closest`, the element, a ref, or a getter.
+   * Size-only — unlike `parent` it never constrains the position. The width cap always applies;
+   * the height cap only in absolute layout (in flow, documents grow with their content).
+   * Re-measured when the boundary resizes and when a gesture starts; the element never moves or
+   * shrinks by itself when the boundary shrinks. `minW` / `minH` win over a smaller cap.
+   */
+  boundary?: BoundaryTarget
   /** Resize handles to render. @default all eight handles */
   handles?: readonly ResizeHandle[]
   /** Keep the aspect ratio while resizing. */

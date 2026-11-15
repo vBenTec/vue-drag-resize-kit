@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue
 
 import { ALL_HANDLES, filterHandles } from '../../core/handles'
 import type { ConstraintOptions, Rect, ResizeHandle } from '../../core/types'
+import { useBoundarySize } from '../composables/useBoundarySize'
 import { useContainerMember } from '../composables/useContainer'
 import { useGesture } from '../composables/useGesture'
 import { useNaturalSize } from '../composables/useNaturalSize'
@@ -10,6 +11,7 @@ import type { DraggableResizableEmits, DraggableResizableProps } from '../types'
 
 const {
   layout = 'absolute',
+  boundary,
   draggable = true,
   resizable = true,
   disabledX,
@@ -70,20 +72,27 @@ const effectiveDraggable = computed(() => draggable && !flow.value)
 
 // In flow, a dimension whose model is 0 renders at its content's size, synced into the model.
 const naturalSize = useNaturalSize({ root, enabled: () => flow.value, w, h })
+// The `boundary` element's content box caps the size, folded into maxW / maxH below.
+const boundarySize = useBoundarySize(root, () => boundary)
 
-const constraints = computed<ConstraintOptions>(() => ({
-  disabledX,
-  disabledY,
-  disabledW,
-  disabledH,
-  minW,
-  minH,
-  maxW,
-  maxH,
-  // `parent` measures the immediate wrapper and reads x / y, neither of which applies in flow.
-  parent: flow.value ? false : parent,
-  lockAspectRatio,
-}))
+const constraints = computed<ConstraintOptions>(() => {
+  const cap = boundarySize.size.value
+  return {
+    disabledX,
+    disabledY,
+    disabledW,
+    disabledH,
+    minW,
+    minH,
+    maxW: cap ? Math.min(maxW ?? Infinity, cap.width) : maxW,
+    // In flow only the width is capped: documents grow with their content (aspect lock still
+    // bounds the height through the width).
+    maxH: cap && !flow.value ? Math.min(maxH ?? Infinity, cap.height) : maxH,
+    // `parent` measures the immediate wrapper and reads x / y, neither of which applies in flow.
+    parent: flow.value ? false : parent,
+    lockAspectRatio,
+  }
+})
 
 const { gesture, startDrag, startResize } = useGesture({
   root,
@@ -103,12 +112,14 @@ const resizingHandle = computed(() =>
 
 const onPointerDown = (event: PointerEvent) => {
   active.value = true
+  boundarySize.refresh()
   startDrag(event)
 }
 
 const onHandlePointerDown = (event: PointerEvent, handle: ResizeHandle) => {
   // The gesture's start rect (and a locked aspect ratio) must never be measured stale.
   naturalSize.refresh()
+  boundarySize.refresh()
   startResize(event, handle)
 }
 
