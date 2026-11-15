@@ -362,6 +362,8 @@ pnpm build && pnpm check:pkg
 `src/core` holds the framework-agnostic geometry (limits, resizing, snapping); `src/vue` holds
 the components and composables built on it. Only `src/index.ts` is public API.
 
+See [RELEASE.md](RELEASE.md) for how to cut a release.
+
 ## Credits
 
 Originally forked from

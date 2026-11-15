@@ -6,7 +6,6 @@
     ":dependencyDashboard",
     "helpers:pinGitHubActionDigestsToSemver"
   ],
-  "baseBranchPatterns": ["dev"],
   "rangeStrategy": "bump",
   "timezone": "Europe/Berlin",
   "schedule": ["before 6am on monday"],

@@ -25,4 +25,5 @@ Before you finish, run what CI runs: `pnpm fmt:check && pnpm lint && pnpm typech
 
 - `main` is the default branch. Branch off it and open a pull request.
 - Conventional commit messages (`feat:`, `fix:`, `refactor:`, `chore:`).
+- User-facing changes add an entry under `## Unreleased` in `CHANGELOG.md`; releases follow `RELEASE.md`.
 - `dist/` is build output. Don't edit it.
