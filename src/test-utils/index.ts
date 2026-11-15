@@ -78,12 +78,31 @@ export const stubResizeObserver = (): ResizeObserverStub[] => {
   return observers
 }
 
-/** Stubs the measured (fractional) size of an element, as `getBoundingClientRect` reports it. */
+/**
+ * Stubs the rendered (fractional) size of an element, as `getComputedStyle` resolves it: its inline
+ * `width` / `height` where it has one, like a real layout, otherwise the given natural size. Undone
+ * by `vi.unstubAllGlobals()`.
+ */
 export const setMeasuredSize = (element: Element, width: number, height: number) => {
-  Object.defineProperty(element, 'getBoundingClientRect', {
-    configurable: true,
-    value: () => ({ width, height, x: 0, y: 0, top: 0, left: 0, right: width, bottom: height }),
+  const { style } = element as HTMLElement
+  const resolve = getComputedStyle
+  vi.stubGlobal('getComputedStyle', (target: Element, pseudo?: string | null) => {
+    const resolved = resolve(target, pseudo)
+    if (target !== element) return resolved
+    return new Proxy(resolved, {
+      get: (base, key) => {
+        if (key === 'width') return style.width || `${width}px`
+        if (key === 'height') return style.height || `${height}px`
+        return Reflect.get(base, key)
+      },
+    })
   })
+}
+
+/** happy-dom does not lay anything out, so tests state where an element sits in its offset parent. */
+export const setOffset = (element: Element, left: number, top: number) => {
+  Object.defineProperty(element, 'offsetLeft', { configurable: true, get: () => left })
+  Object.defineProperty(element, 'offsetTop', { configurable: true, get: () => top })
 }
 
 export const rectOf = (element: Element) => {

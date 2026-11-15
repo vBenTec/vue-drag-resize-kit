@@ -63,10 +63,17 @@ const rect = computed<Rect>({
 })
 
 const root = useTemplateRef<HTMLDivElement>('root')
-// Other elements in a `DraggableContainer` snap to this one, whether or not it can be dragged.
-const member = useContainerMember(() => rect.value)
-
 const flow = computed(() => layout === 'flow')
+
+// Other elements in a `DraggableContainer` snap to this one, whether or not it can be dragged. In
+// flow, x / y are ignored, so the snap target is where the browser placed the element: its offset
+// in the nearest positioned ancestor, which is also the box absolute siblings' x / y refer to.
+// The offset is in whole px but untransformed like x / y, which a bounding rect would not be.
+const member = useContainerMember(() => {
+  const el = root.value
+  return flow.value && el ? { ...rect.value, x: el.offsetLeft, y: el.offsetTop } : rect.value
+})
+
 // In flow the browser owns the position, so dragging is silently inert.
 const effectiveDraggable = computed(() => draggable && !flow.value)
 

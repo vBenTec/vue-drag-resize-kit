@@ -3,6 +3,7 @@ import { createApp, defineComponent, h, nextTick, reactive, type App } from 'vue
 
 import type { Rect } from '../../core/types'
 import { pointer, rectOf } from '../../test-utils'
+import DraggableContainer from './DraggableContainer.vue'
 import DraggableResizable from './DraggableResizable.vue'
 
 const svgImage = (width: number, height: number) =>
@@ -38,6 +39,10 @@ const gesture = async (target: Element, moves: [number, number][]) => {
 
 const handleOf = (root: HTMLElement, name: string) =>
   root.querySelector<HTMLElement>(`[data-handle="${name}"]`)!
+
+/** Waits until the browser rendered a frame, so pending `ResizeObserver` notifications are in. */
+const rendered = () =>
+  new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 
 interface FlowState {
   w: number
@@ -239,6 +244,104 @@ describe('flow layout in an editor column', () => {
     editor.style.width = '120.5px'
     await gesture(handleOf(root, 'br'), [[1, 0]])
     expect(state.w).toBeCloseTo(contentWidth(), 3)
+  })
+})
+
+describe('natural size measurement', () => {
+  it('measures in layout px under a transform: a handle press never rewrites the size', async () => {
+    const { editor, root, state } = await mountEditorImage({ intrinsicW: 300, intrinsicH: 225 })
+    editor.style.transform = 'scale(0.5)'
+    editor.style.transformOrigin = '0 0'
+    expect(root.getBoundingClientRect().width).toBeCloseTo(150, 3)
+
+    // The press re-measures the natural size: the laid out one, not the displayed one.
+    pointer(handleOf(root, 'br'), 'pointerdown', 200, 200)
+    pointer(document, 'pointerup', 200, 200)
+    await nextTick()
+    expect(state.w).toBeCloseTo(300, 3)
+    expect(state.h).toBeCloseTo(225, 3)
+
+    await gesture(handleOf(root, 'br'), [[10, 0]])
+    expect(state.resizeStarts[0]!.w).toBeCloseTo(300, 3)
+    expect(state.w).toBeCloseTo(310, 3)
+  })
+
+  it('syncs the physical width / height in a vertical writing mode', async () => {
+    const host = document.createElement('div')
+    host.style.writingMode = 'vertical-rl'
+    document.body.appendChild(host)
+
+    const state = reactive({ w: 0, h: 0 })
+    const app = createApp(
+      defineComponent({
+        setup: () => () =>
+          h(
+            DraggableResizable,
+            {
+              layout: 'flow',
+              active: true,
+              w: state.w,
+              h: state.h,
+              'onUpdate:w': (value: number) => (state.w = value),
+              'onUpdate:h': (value: number) => (state.h = value),
+            },
+            () => h('div', { style: 'width: 300px; height: 100px;' }),
+          ),
+      }),
+    )
+    apps.push(app)
+    app.mount(host)
+    const root = host.querySelector<HTMLElement>('.vdr-container')!
+
+    // The observer's entries are logical: inline size = height, block size = width here.
+    await rendered()
+    expect(state.w).toBeCloseTo(300, 3)
+    expect(state.h).toBeCloseTo(100, 3)
+
+    await gesture(handleOf(root, 'br'), [[10, 20]])
+    expect(state.w).toBeCloseTo(310, 3)
+    expect(state.h).toBeCloseTo(120, 3)
+  })
+})
+
+describe('flow element in a DraggableContainer', () => {
+  it('is a snap target where the browser placed it, not at its x / y', async () => {
+    const parent = document.createElement('div')
+    parent.style.cssText = 'width: 400px; height: 300px;'
+    document.body.appendChild(parent)
+
+    const app = createApp(
+      defineComponent({
+        setup: () => () =>
+          h(DraggableContainer, { snapToParent: false }, () => [
+            h('p', { style: 'margin: 0; height: 40px;' }),
+            h(DraggableResizable, {
+              class: 'flow',
+              layout: 'flow',
+              w: 50,
+              h: 50,
+              style: 'margin-left: 120px;',
+            }),
+            h(DraggableResizable, { class: 'dragged', initW: 50, initH: 50 }),
+          ]),
+      }),
+    )
+    apps.push(app)
+    app.mount(parent)
+    await nextTick()
+
+    const container = parent.querySelector<HTMLElement>('.vdr-snap-container')!
+    const flow = parent.querySelector<HTMLElement>('.flow')!
+    const dragged = parent.querySelector<HTMLElement>('.dragged')!
+    const left = flow.getBoundingClientRect().left - container.getBoundingClientRect().left
+    const top = flow.getBoundingClientRect().top - container.getBoundingClientRect().top
+    expect(left).toBe(120)
+    expect(top).toBe(40)
+
+    // The dragged element's right edge ends 3px before the flow element's left edge, its top 3px
+    // below the flow element's bottom: both snap.
+    await gesture(dragged, [[left - 53, top + 53]])
+    expect(rectOf(dragged)).toEqual({ x: left - 50, y: top + 50, w: 50, h: 50 })
   })
 })
 

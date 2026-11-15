@@ -338,7 +338,8 @@ import 'vue-drag-resize-kit/style.css'
 The container fills its parent (`width: 100%; height: 100%; position: relative`). Elements snap
 when one of their edges or their centre comes within 5px of a guide. Snapping applies while
 dragging, not while resizing. Elements with `draggable` off still act as snap targets for the
-others.
+others, and so do elements with `layout="flow"` — at the position the browser laid them out (their
+offset in the nearest positioned ancestor, in whole pixels), not at their ignored `x` / `y`.
 
 | Prop           | Type                | Default | Description                                                   |
 | -------------- | ------------------- | ------- | ------------------------------------------------------------- |

@@ -12,7 +12,8 @@ All notable changes to this project are documented here. The format follows
   normal document flow (`position: relative; display: inline-block`) for content such as inline
   editor images. In flow, `x` / `y` are ignored, dragging is inert, `parent` is ignored, and
   resizing never moves the element — `t` / `l` handles grow the size by the usual delta while the
-  element extends per its flow position. Exported as `LayoutMode`.
+  element extends per its flow position. In a `DraggableContainer`, a flow element is a snap
+  target at its laid out position. Exported as `LayoutMode`.
 - Natural content sizing in flow layout: a dimension whose model is `0` renders at its content's
   responsive size, which is synced back into `v-model:w` / `v-model:h` (fractional, without
   resize events) and keeps tracking the layout — e.g. through an async image load — until the

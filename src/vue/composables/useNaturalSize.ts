@@ -36,17 +36,24 @@ export const useNaturalSize = ({ root, enabled, w, h }: UseNaturalSizeOptions) =
   let lastSyncedW: number | null = null
   let lastSyncedH: number | null = null
 
+  /**
+   * The rendered size in the terms of the inline `width` / `height`: their resolved values are the
+   * used border box (see styles) — fractional, in layout px (unlike a bounding rect, untouched by
+   * transforms) and physical in any writing mode. `null` while not rendered (they resolve `auto`).
+   */
   const measureRoot = (): Size | null => {
     const el = root.value
     if (!el) return null
-    const { width, height } = el.getBoundingClientRect()
-    return { width, height }
+    const style = getComputedStyle(el)
+    const width = parseFloat(style.width)
+    const height = parseFloat(style.height)
+    return Number.isNaN(width) || Number.isNaN(height) ? null : { width, height }
   }
 
   /** Writes the rendered size into the natural models. */
-  const sync = (size: Size | null = null) => {
+  const sync = () => {
     if (!enabled() || (!naturalW.value && !naturalH.value)) return
-    const measured = size ?? measureRoot()
+    const measured = measureRoot()
     if (!measured) return
 
     syncing = true
@@ -74,10 +81,19 @@ export const useNaturalSize = ({ root, enabled, w, h }: UseNaturalSizeOptions) =
       const nextH = newH === oldH ? null : classify(newH, lastSyncedH)
       if (nextW !== null) naturalW.value = nextW
       if (nextH !== null) naturalH.value = nextH
-      // A dimension reset to natural picks up the rendered size right away.
-      if (nextW === true || nextH === true) sync()
     },
     { flush: 'sync' },
+  )
+
+  // A dimension that turns natural (or natural sizing that turns on) picks up the rendered size
+  // right away — after the re-render: before it, the element still has its old inline size or
+  // absolute layout, which a measurement would read back into the model.
+  watch(
+    [enabled, naturalW, naturalH],
+    (next, prev) => {
+      if (next.some((on, index) => on && !prev[index])) sync()
+    },
+    { flush: 'post' },
   )
 
   // `sync` flush: observe during mount, like `useParentSize`. Without a `ResizeObserver` the
@@ -89,11 +105,9 @@ export const useNaturalSize = ({ root, enabled, w, h }: UseNaturalSizeOptions) =
       sync()
       if (typeof ResizeObserver === 'undefined') return
 
-      const observer = new ResizeObserver((entries) => {
-        // `borderBoxSize` is fractional; the box equals the content box (no border, see styles).
-        const box = entries.at(-1)?.borderBoxSize?.[0]
-        sync(box ? { width: box.inlineSize, height: box.blockSize } : null)
-      })
+      // Re-measures instead of reading the entry: its sizes are logical (inline / block), and one
+      // measurement keeps the observer and `refresh` from ever disagreeing.
+      const observer = new ResizeObserver(() => sync())
       observer.observe(el)
       onWatcherCleanup(() => observer.disconnect())
     },
@@ -105,6 +119,6 @@ export const useNaturalSize = ({ root, enabled, w, h }: UseNaturalSizeOptions) =
     naturalW: readonly(naturalW),
     naturalH: readonly(naturalH),
     /** Re-measure right now, e.g. right before a gesture starts. */
-    refresh: () => sync(),
+    refresh: sync,
   }
 }
