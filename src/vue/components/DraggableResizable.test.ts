@@ -4,7 +4,14 @@ import { nextTick } from 'vue'
 
 import { ALL_HANDLES } from '../../core/handles'
 import type { ResizeHandle } from '../../core/types'
-import { dragBy, pointer, rectOf, setInnerSize } from '../../test-utils'
+import {
+  dragBy,
+  pointer,
+  rectOf,
+  setInnerSize,
+  setMeasuredSize,
+  stubResizeObserver,
+} from '../../test-utils'
 import type { DraggableResizableProps } from '../types'
 import DraggableResizable from './DraggableResizable.vue'
 
@@ -383,6 +390,117 @@ describe('flow layout', () => {
     await wrapper.setProps({ layout: 'absolute' })
     expect(wrapper.attributes('data-layout')).toBeUndefined()
     expect(wrapper.element.style.left).toBe('100px')
+  })
+})
+
+/** Mounts a flow element without w / h, so both dimensions start natural. */
+const mountNatural = (props: Props = {}) => {
+  const observers = stubResizeObserver()
+  const wrapper = mount(DraggableResizable, {
+    attachTo: document.body,
+    props: { layout: 'flow', active: true, ...props },
+  })
+  expect(observers).toHaveLength(1)
+  return { wrapper, observer: observers[0]! }
+}
+
+const resized = (target: Element, width: number, height: number) => [
+  { target, borderBoxSize: [{ inlineSize: width, blockSize: height }] },
+]
+
+describe('natural sizing (flow)', () => {
+  it('syncs the rendered fractional size into the models without resize events', async () => {
+    const { wrapper, observer } = mountNatural()
+
+    observer.trigger(resized(wrapper.element, 345.5, 123.25))
+    await nextTick()
+
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([345.5])
+    expect(wrapper.emitted('update:h')?.at(-1)).toEqual([123.25])
+    expect(wrapper.emitted('resize-start')).toBeUndefined()
+    expect(wrapper.emitted('resizing')).toBeUndefined()
+    expect(wrapper.emitted('resize-end')).toBeUndefined()
+  })
+
+  it('stays natural after a sync, so an async image load re-syncs', async () => {
+    const { wrapper, observer } = mountNatural()
+
+    observer.trigger(resized(wrapper.element, 100, 20))
+    // The image finished loading and the element resized again.
+    observer.trigger(resized(wrapper.element, 640.5, 480.25))
+    await nextTick()
+
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([640.5])
+    expect(wrapper.emitted('update:h')?.at(-1)).toEqual([480.25])
+  })
+
+  it('renders no inline size while natural', async () => {
+    const { wrapper, observer } = mountNatural()
+
+    observer.trigger(resized(wrapper.element, 345.5, 123.25))
+    await nextTick()
+
+    expect(wrapper.element.style.width).toBe('')
+    expect(wrapper.element.style.height).toBe('')
+  })
+
+  it('makes a dimension explicit on an external write while the other keeps tracking', async () => {
+    const { wrapper, observer } = mountNatural()
+
+    await wrapper.setProps({ w: 500 })
+    observer.trigger(resized(wrapper.element, 500, 200.5))
+    await nextTick()
+
+    expect(wrapper.element.style.width).toBe('500px')
+    expect(wrapper.element.style.height).toBe('')
+    expect(wrapper.emitted('update:h')?.at(-1)).toEqual([200.5])
+
+    // Width no longer follows the observer.
+    observer.trigger(resized(wrapper.element, 480, 190))
+    await nextTick()
+    expect(wrapper.emitted('update:w')).toBeUndefined()
+    expect(wrapper.emitted('update:h')?.at(-1)).toEqual([190])
+  })
+
+  it('makes the gestured dimensions explicit, starting from a fresh measurement', async () => {
+    const { wrapper, observer } = mountNatural()
+    setMeasuredSize(wrapper.element, 345.5, 123.25)
+
+    await dragBy(handle(wrapper, 'br'), 10, 20)
+
+    expect(wrapper.emitted('resize-start')).toEqual([[{ x: 0, y: 0, w: 345.5, h: 123.25 }]])
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([355.5])
+    expect(wrapper.emitted('update:h')?.at(-1)).toEqual([143.25])
+    expect(wrapper.element.style.width).toBe('355.5px')
+
+    // Both dimensions stopped following the observer.
+    const writes = wrapper.emitted('update:w')!.length
+    observer.trigger(resized(wrapper.element, 999, 999))
+    await nextTick()
+    expect(wrapper.emitted('update:w')).toHaveLength(writes)
+  })
+
+  it('becomes natural again when a dimension is written back to 0', async () => {
+    const { wrapper, observer } = mountNatural()
+    setMeasuredSize(wrapper.element, 345.5, 123.25)
+
+    await wrapper.setProps({ w: 500 })
+    expect(wrapper.element.style.width).toBe('500px')
+
+    await wrapper.setProps({ w: 0 })
+    // Natural again: no inline size, and the rendered size is picked up right away.
+    expect(wrapper.element.style.width).toBe('')
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([345.5])
+
+    observer.trigger(resized(wrapper.element, 400, 150))
+    await nextTick()
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([400])
+  })
+
+  it('never observes in absolute mode', () => {
+    const observers = stubResizeObserver()
+    mount(DraggableResizable, { attachTo: document.body, props: {} })
+    expect(observers).toHaveLength(0)
   })
 })
 

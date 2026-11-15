@@ -5,6 +5,7 @@ import { ALL_HANDLES, filterHandles } from '../../core/handles'
 import type { ConstraintOptions, Rect, ResizeHandle } from '../../core/types'
 import { useContainerMember } from '../composables/useContainer'
 import { useGesture } from '../composables/useGesture'
+import { useNaturalSize } from '../composables/useNaturalSize'
 import type { DraggableResizableEmits, DraggableResizableProps } from '../types'
 
 const {
@@ -67,6 +68,9 @@ const flow = computed(() => layout === 'flow')
 // In flow the browser owns the position, so dragging is silently inert.
 const effectiveDraggable = computed(() => draggable && !flow.value)
 
+// In flow, a dimension whose model is 0 renders at its content's size, synced into the model.
+const naturalSize = useNaturalSize({ root, enabled: () => flow.value, w, h })
+
 const constraints = computed<ConstraintOptions>(() => ({
   disabledX,
   disabledY,
@@ -102,6 +106,12 @@ const onPointerDown = (event: PointerEvent) => {
   startDrag(event)
 }
 
+const onHandlePointerDown = (event: PointerEvent, handle: ResizeHandle) => {
+  // The gesture's start rect (and a locked aspect ratio) must never be measured stale.
+  naturalSize.refresh()
+  startResize(event, handle)
+}
+
 const onOutsidePointerDown = (event: PointerEvent) => {
   if (active.value && !root.value?.contains(event.target as Node | null)) {
     active.value = false
@@ -122,8 +132,8 @@ const style = computed(() => ({
   // In flow the browser owns the position, and a natural dimension has no inline size either.
   left: flow.value ? undefined : `${x.value}px`,
   top: flow.value ? undefined : `${y.value}px`,
-  width: flow.value && w.value === 0 ? undefined : `${w.value}px`,
-  height: flow.value && h.value === 0 ? undefined : `${h.value}px`,
+  width: flow.value && naturalSize.naturalW.value ? undefined : `${w.value}px`,
+  height: flow.value && naturalSize.naturalH.value ? undefined : `${h.value}px`,
   // Without this the browser claims touch gestures for scrolling and cancels the pointer.
   touchAction: effectiveDraggable.value || resizable ? 'none' : undefined,
 }))
@@ -167,7 +177,7 @@ const handleClasses = (handle: ResizeHandle) => [
       :key="handle"
       :class="handleClasses(handle)"
       :data-handle="handle"
-      @pointerdown.stop="startResize($event, handle)"
+      @pointerdown.stop="onHandlePointerDown($event, handle)"
     />
   </div>
 </template>
