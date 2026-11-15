@@ -323,6 +323,69 @@ describe('resizing', () => {
   })
 })
 
+describe('flow layout', () => {
+  it('renders no position styles and marks the layout', async () => {
+    const wrapper = mountElement({ layout: 'flow' })
+    const { style } = wrapper.element
+
+    expect(wrapper.attributes('data-layout')).toBe('flow')
+    expect(style.left).toBe('')
+    expect(style.top).toBe('')
+    expect(style.width).toBe('100px')
+    expect(style.height).toBe('50px')
+  })
+
+  it('keeps absolute mode unchanged by default', () => {
+    const wrapper = mountElement()
+    expect(wrapper.attributes('data-layout')).toBeUndefined()
+    expect(rectOf(wrapper.element)).toEqual({ x: 100, y: 100, w: 100, h: 50 })
+  })
+
+  it('activates on press but never drags', async () => {
+    const wrapper = mountElement({ layout: 'flow' })
+    expect(wrapper.classes()).not.toContain('vdr-draggable')
+
+    await dragBy(wrapper.element, 30, 30)
+    expect(wrapper.emitted('update:active')).toEqual([[true]])
+    expect(wrapper.emitted('drag-start')).toBeUndefined()
+    expect(wrapper.emitted('dragging')).toBeUndefined()
+    expect(wrapper.emitted('update:x')).toBeUndefined()
+    expect(wrapper.emitted('update:y')).toBeUndefined()
+  })
+
+  it('resizes from t / l handles without moving the rect', async () => {
+    const wrapper = mountElement({ layout: 'flow', active: true })
+
+    await dragBy(handle(wrapper, 'tl'), -10, -20)
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([110])
+    expect(wrapper.emitted('update:h')?.at(-1)).toEqual([70])
+    expect(wrapper.emitted('update:x')).toBeUndefined()
+    expect(wrapper.emitted('update:y')).toBeUndefined()
+  })
+
+  it('ignores `parent` in flow', async () => {
+    const wrapper = mountElement({ layout: 'flow', active: true, parent: true })
+
+    await dragBy(handle(wrapper, 'br'), 500, 500)
+    // The 300x300 parent would cap the size in absolute mode.
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([600])
+    expect(wrapper.emitted('update:h')?.at(-1)).toEqual([550])
+  })
+
+  it('recomputes the styles when the layout switches at runtime', async () => {
+    const wrapper = mountElement()
+    expect(wrapper.element.style.left).toBe('100px')
+
+    await wrapper.setProps({ layout: 'flow' })
+    expect(wrapper.attributes('data-layout')).toBe('flow')
+    expect(wrapper.element.style.left).toBe('')
+
+    await wrapper.setProps({ layout: 'absolute' })
+    expect(wrapper.attributes('data-layout')).toBeUndefined()
+    expect(wrapper.element.style.left).toBe('100px')
+  })
+})
+
 describe('gesture hygiene', () => {
   it('emits no drag events and no model writes for a motionless press', async () => {
     const wrapper = mountElement()

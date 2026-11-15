@@ -2,12 +2,29 @@ import type { EmitFn, ShortEmitsToObject } from 'vue'
 
 import type { Guides, Point, Rect, ResizeHandle, Size } from '../core/types'
 
+/**
+ * How the element is positioned.
+ *
+ * - `absolute` (the default): the element is absolutely positioned at `x` / `y` and can be
+ *   dragged; resizing from a `t` / `l` edge moves it to keep the opposite edge in place.
+ * - `flow`: the element stays in normal document flow (`position: relative; display:
+ *   inline-block`) — the layout for content such as inline images in an editor. The browser owns
+ *   the position: `x` / `y` are ignored, dragging is inert and resizing never moves the element —
+ *   `t` / `l` handles grow the size by the usual delta and the element extends per its flow
+ *   position. A dimension whose model is `0` is *natural*: it gets no inline size, renders at its
+ *   content's responsive size and syncs that size back to the model. `parent` is ignored (its
+ *   measured wrapper is usually sized by the content itself); use `boundary` instead.
+ */
+export type LayoutMode = 'absolute' | 'flow'
+
 export interface DraggableResizableProps {
   /** Initial width (px), used when `w` / `v-model:w` is not set. */
   initW?: number
   /** Initial height (px), used when `h` / `v-model:h` is not set. */
   initH?: number
-  /** Whether the element can be dragged. @default true */
+  /** How the element is positioned; see {@link LayoutMode}. @default 'absolute' */
+  layout?: LayoutMode
+  /** Whether the element can be dragged. Ignored with `layout="flow"`. @default true */
   draggable?: boolean
   /** Whether the element can be resized. @default true */
   resizable?: boolean

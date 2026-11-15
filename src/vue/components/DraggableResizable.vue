@@ -8,6 +8,7 @@ import { useGesture } from '../composables/useGesture'
 import type { DraggableResizableEmits, DraggableResizableProps } from '../types'
 
 const {
+  layout = 'absolute',
   draggable = true,
   resizable = true,
   disabledX,
@@ -62,6 +63,10 @@ const root = useTemplateRef<HTMLDivElement>('root')
 // Other elements in a `DraggableContainer` snap to this one, whether or not it can be dragged.
 const member = useContainerMember(() => rect.value)
 
+const flow = computed(() => layout === 'flow')
+// In flow the browser owns the position, so dragging is silently inert.
+const effectiveDraggable = computed(() => draggable && !flow.value)
+
 const constraints = computed<ConstraintOptions>(() => ({
   disabledX,
   disabledY,
@@ -71,7 +76,8 @@ const constraints = computed<ConstraintOptions>(() => ({
   minH,
   maxW,
   maxH,
-  parent,
+  // `parent` measures the immediate wrapper and reads x / y, neither of which applies in flow.
+  parent: flow.value ? false : parent,
   lockAspectRatio,
 }))
 
@@ -79,9 +85,9 @@ const { gesture, startDrag, startResize } = useGesture({
   root,
   rect,
   constraints,
-  draggable: () => draggable,
+  draggable: () => effectiveDraggable.value,
   resizable: () => resizable,
-  anchor: () => true,
+  anchor: () => !flow.value,
   member,
   emit,
 })
@@ -113,16 +119,17 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutsidePoint
 const visibleHandles = computed(() => (resizable ? filterHandles(handles) : []))
 
 const style = computed(() => ({
-  left: `${x.value}px`,
-  top: `${y.value}px`,
-  width: `${w.value}px`,
-  height: `${h.value}px`,
+  // In flow the browser owns the position, and a natural dimension has no inline size either.
+  left: flow.value ? undefined : `${x.value}px`,
+  top: flow.value ? undefined : `${y.value}px`,
+  width: flow.value && w.value === 0 ? undefined : `${w.value}px`,
+  height: flow.value && h.value === 0 ? undefined : `${h.value}px`,
   // Without this the browser claims touch gestures for scrolling and cancels the pointer.
-  touchAction: draggable || resizable ? 'none' : undefined,
+  touchAction: effectiveDraggable.value || resizable ? 'none' : undefined,
 }))
 
 const stateClasses = computed(() => ({
-  [classNameDraggable]: draggable,
+  [classNameDraggable]: effectiveDraggable.value,
   [classNameResizable]: resizable,
   [classNameDragging]: dragging.value,
   [classNameResizing]: resizingHandle.value !== null,
@@ -145,6 +152,7 @@ const handleClasses = (handle: ResizeHandle) => [
     class="vdr-container"
     :class="stateClasses"
     :style="style"
+    :data-layout="flow ? 'flow' : undefined"
     :data-active="active || undefined"
     :data-dragging="dragging || undefined"
     :data-resizing="resizingHandle ?? undefined"
@@ -168,6 +176,13 @@ const handleClasses = (handle: ResizeHandle) => [
 .vdr-container {
   position: absolute;
   box-sizing: border-box;
+}
+
+/* `inline-block` shrinks to fit the content, which natural sizing measures. Override it with
+   plain CSS (e.g. `display: block`) if the element should fill its line instead. */
+.vdr-container[data-layout='flow'] {
+  position: relative;
+  display: inline-block;
 }
 
 /* An outline, not a border: the frame never contributes to the box model, so `w` / `h` always
