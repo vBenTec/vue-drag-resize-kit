@@ -81,6 +81,7 @@ const { gesture, startDrag, startResize } = useGesture({
   constraints,
   draggable: () => draggable,
   resizable: () => resizable,
+  anchor: () => true,
   member,
   emit,
 })

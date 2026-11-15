@@ -159,8 +159,9 @@ describe('dragging', () => {
 
   it('ends the drag on pointercancel', async () => {
     const wrapper = mountElement()
-    pointer(wrapper.element, 'pointerdown')
-    pointer(document, 'pointercancel')
+    pointer(wrapper.element, 'pointerdown', 0, 0)
+    pointer(document, 'pointermove', 5, 5)
+    pointer(document, 'pointercancel', 5, 5)
     await nextTick()
     expect(wrapper.attributes('data-dragging')).toBeUndefined()
     expect(wrapper.emitted('drag-end')).toHaveLength(1)
@@ -319,6 +320,76 @@ describe('resizing', () => {
     await wrapper.setProps({ resizable: false })
     await dragBy(br, 10, 10)
     expect(wrapper.emitted('resize-start')).toBeUndefined()
+  })
+})
+
+describe('gesture hygiene', () => {
+  it('emits no drag events and no model writes for a motionless press', async () => {
+    const wrapper = mountElement()
+
+    pointer(wrapper.element, 'pointerdown', 10, 10)
+    pointer(document, 'pointerup', 10, 10)
+    await nextTick()
+
+    expect(wrapper.emitted('drag-start')).toBeUndefined()
+    expect(wrapper.emitted('dragging')).toBeUndefined()
+    expect(wrapper.emitted('drag-end')).toBeUndefined()
+    expect(wrapper.emitted('update:x')).toBeUndefined()
+    expect(wrapper.emitted('update:y')).toBeUndefined()
+    expect(wrapper.emitted('activated')).toHaveLength(1)
+  })
+
+  it('emits no resize events and no model writes for a motionless handle press', async () => {
+    const wrapper = mountElement({ active: true })
+
+    pointer(handle(wrapper, 'br'), 'pointerdown', 10, 10)
+    pointer(document, 'pointerup', 10, 10)
+    await nextTick()
+
+    expect(wrapper.emitted('resize-start')).toBeUndefined()
+    expect(wrapper.emitted('resize-end')).toBeUndefined()
+    expect(wrapper.emitted('update:w')).toBeUndefined()
+    expect(wrapper.emitted('update:h')).toBeUndefined()
+  })
+
+  it('ignores the zero-delta move some touch stacks fire at the press', async () => {
+    const wrapper = mountElement({ active: true })
+
+    pointer(handle(wrapper, 'br'), 'pointerdown', 10, 10)
+    pointer(document, 'pointermove', 10, 10)
+    pointer(document, 'pointerup', 10, 10)
+    await nextTick()
+
+    expect(wrapper.emitted('resize-start')).toBeUndefined()
+    expect(wrapper.emitted('resizing')).toBeUndefined()
+    expect(wrapper.emitted('resize-end')).toBeUndefined()
+  })
+
+  it('emits start on the first real movement and end with the final rect', async () => {
+    const wrapper = mountElement({ active: true })
+
+    pointer(handle(wrapper, 'br'), 'pointerdown', 10, 10)
+    pointer(document, 'pointermove', 10, 10)
+    pointer(document, 'pointermove', 20, 30)
+    pointer(document, 'pointerup', 20, 30)
+    await nextTick()
+
+    expect(wrapper.emitted('resize-start')).toEqual([[{ x: 100, y: 100, w: 100, h: 50 }]])
+    expect(wrapper.emitted('resizing')).toEqual([[{ x: 100, y: 100, w: 110, h: 70 }]])
+    expect(wrapper.emitted('resize-end')).toEqual([[{ x: 100, y: 100, w: 110, h: 70 }]])
+  })
+
+  it('still flips the gesture state classes on a motionless press', async () => {
+    const wrapper = mountElement()
+
+    pointer(wrapper.element, 'pointerdown', 0, 0)
+    await nextTick()
+    expect(wrapper.attributes('data-dragging')).toBe('true')
+
+    pointer(document, 'pointerup', 0, 0)
+    await nextTick()
+    expect(wrapper.attributes('data-dragging')).toBeUndefined()
+    expect(wrapper.emitted('drag-start')).toBeUndefined()
   })
 })
 
