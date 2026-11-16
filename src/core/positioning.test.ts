@@ -194,6 +194,50 @@ describe('resizeRect', () => {
     ).toEqual({ x: 90, y: 50, w: 110, h: 50 })
   })
 
+  describe('without anchoring', () => {
+    it.each([
+      ['tl', { w: 90, h: 30 }],
+      ['tm', { w: 100, h: 30 }],
+      ['tr', { w: 110, h: 30 }],
+      ['ml', { w: 90, h: 50 }],
+      ['mr', { w: 110, h: 50 }],
+      ['bl', { w: 90, h: 70 }],
+      ['bm', { w: 100, h: 70 }],
+      ['br', { w: 110, h: 70 }],
+    ] as const)('%s grows by the usual delta but never moves the rect', (handle, expected) => {
+      const result = resize({ handle, deltaX: 10, deltaY: 20, anchor: false })
+      // Same size as the anchored resize, position untouched.
+      expect(result).toEqual({ x: start.x, y: start.y, ...expected })
+      expect(resize({ handle, deltaX: 10, deltaY: 20 })).toMatchObject(expected)
+    })
+
+    it('keeps the position for aspect-locked edge handles that act as corners', () => {
+      const options = { lockAspectRatio: true }
+      // `tm` / `ml` behave like `tl` and would normally move both x and y.
+      expect(resize({ handle: 'tm', deltaY: -10, options, anchor: false })).toEqual({
+        x: 100,
+        y: 50,
+        w: 120,
+        h: 60,
+      })
+      expect(resize({ handle: 'ml', deltaX: -20, options, anchor: false })).toEqual({
+        x: 100,
+        y: 50,
+        w: 120,
+        h: 60,
+      })
+    })
+
+    it('still compensates when anchor is omitted', () => {
+      expect(resize({ handle: 'tl', deltaX: 10, deltaY: 20 })).toEqual({
+        x: 110,
+        y: 70,
+        w: 90,
+        h: 30,
+      })
+    })
+  })
+
   describe('with a locked aspect ratio', () => {
     const options = { lockAspectRatio: true }
 

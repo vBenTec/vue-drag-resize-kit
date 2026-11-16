@@ -3,11 +3,15 @@ import { computed, onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue
 
 import { ALL_HANDLES, filterHandles } from '../../core/handles'
 import type { ConstraintOptions, Rect, ResizeHandle } from '../../core/types'
+import { useBoundarySize } from '../composables/useBoundarySize'
 import { useContainerMember } from '../composables/useContainer'
 import { useGesture } from '../composables/useGesture'
+import { useNaturalSize } from '../composables/useNaturalSize'
 import type { DraggableResizableEmits, DraggableResizableProps } from '../types'
 
 const {
+  layout = 'absolute',
+  boundary,
   draggable = true,
   resizable = true,
   disabledX,
@@ -59,28 +63,51 @@ const rect = computed<Rect>({
 })
 
 const root = useTemplateRef<HTMLDivElement>('root')
-// Other elements in a `DraggableContainer` snap to this one, whether or not it can be dragged.
-const member = useContainerMember(() => rect.value)
+const flow = computed(() => layout === 'flow')
 
-const constraints = computed<ConstraintOptions>(() => ({
-  disabledX,
-  disabledY,
-  disabledW,
-  disabledH,
-  minW,
-  minH,
-  maxW,
-  maxH,
-  parent,
-  lockAspectRatio,
-}))
+// Other elements in a `DraggableContainer` snap to this one, whether or not it can be dragged. In
+// flow, x / y are ignored, so the snap target is where the browser placed the element: its offset
+// in the nearest positioned ancestor, which is also the box absolute siblings' x / y refer to.
+// The offset is in whole px but untransformed like x / y, which a bounding rect would not be.
+const member = useContainerMember(() => {
+  const el = root.value
+  return flow.value && el ? { ...rect.value, x: el.offsetLeft, y: el.offsetTop } : rect.value
+})
+
+// In flow the browser owns the position, so dragging is silently inert.
+const effectiveDraggable = computed(() => draggable && !flow.value)
+
+// In flow, a dimension whose model is 0 renders at its content's size, synced into the model.
+const naturalSize = useNaturalSize({ root, enabled: () => flow.value, w, h })
+// The `boundary` element's content box caps the size, folded into maxW / maxH below.
+const boundarySize = useBoundarySize(root, () => boundary)
+
+const constraints = computed<ConstraintOptions>(() => {
+  const cap = boundarySize.size.value
+  return {
+    disabledX,
+    disabledY,
+    disabledW,
+    disabledH,
+    minW,
+    minH,
+    maxW: cap ? Math.min(maxW ?? Infinity, cap.width) : maxW,
+    // In flow only the width is capped: documents grow with their content (aspect lock still
+    // bounds the height through the width).
+    maxH: cap && !flow.value ? Math.min(maxH ?? Infinity, cap.height) : maxH,
+    // `parent` measures the immediate wrapper and reads x / y, neither of which applies in flow.
+    parent: flow.value ? false : parent,
+    lockAspectRatio,
+  }
+})
 
 const { gesture, startDrag, startResize } = useGesture({
   root,
   rect,
   constraints,
-  draggable: () => draggable,
+  draggable: () => effectiveDraggable.value,
   resizable: () => resizable,
+  anchor: () => !flow.value,
   member,
   emit,
 })
@@ -92,7 +119,15 @@ const resizingHandle = computed(() =>
 
 const onPointerDown = (event: PointerEvent) => {
   active.value = true
+  boundarySize.refresh()
   startDrag(event)
+}
+
+const onHandlePointerDown = (event: PointerEvent, handle: ResizeHandle) => {
+  // The gesture's start rect (and a locked aspect ratio) must never be measured stale.
+  naturalSize.refresh()
+  boundarySize.refresh()
+  startResize(event, handle)
 }
 
 const onOutsidePointerDown = (event: PointerEvent) => {
@@ -112,16 +147,17 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutsidePoint
 const visibleHandles = computed(() => (resizable ? filterHandles(handles) : []))
 
 const style = computed(() => ({
-  left: `${x.value}px`,
-  top: `${y.value}px`,
-  width: `${w.value}px`,
-  height: `${h.value}px`,
+  // In flow the browser owns the position, and a natural dimension has no inline size either.
+  left: flow.value ? undefined : `${x.value}px`,
+  top: flow.value ? undefined : `${y.value}px`,
+  width: flow.value && naturalSize.naturalW.value ? undefined : `${w.value}px`,
+  height: flow.value && naturalSize.naturalH.value ? undefined : `${h.value}px`,
   // Without this the browser claims touch gestures for scrolling and cancels the pointer.
-  touchAction: draggable || resizable ? 'none' : undefined,
+  touchAction: effectiveDraggable.value || resizable ? 'none' : undefined,
 }))
 
 const stateClasses = computed(() => ({
-  [classNameDraggable]: draggable,
+  [classNameDraggable]: effectiveDraggable.value,
   [classNameResizable]: resizable,
   [classNameDragging]: dragging.value,
   [classNameResizing]: resizingHandle.value !== null,
@@ -144,6 +180,7 @@ const handleClasses = (handle: ResizeHandle) => [
     class="vdr-container"
     :class="stateClasses"
     :style="style"
+    :data-layout="flow ? 'flow' : undefined"
     :data-active="active || undefined"
     :data-dragging="dragging || undefined"
     :data-resizing="resizingHandle ?? undefined"
@@ -158,7 +195,7 @@ const handleClasses = (handle: ResizeHandle) => [
       :key="handle"
       :class="handleClasses(handle)"
       :data-handle="handle"
-      @pointerdown.stop="startResize($event, handle)"
+      @pointerdown.stop="onHandlePointerDown($event, handle)"
     />
   </div>
 </template>
@@ -167,16 +204,24 @@ const handleClasses = (handle: ResizeHandle) => [
 .vdr-container {
   position: absolute;
   box-sizing: border-box;
-  border: var(--vdr-border-width, 1px) solid transparent;
 }
 
+/* `inline-block` shrinks to fit the content, which natural sizing measures. Override it with
+   plain CSS (e.g. `display: block`) if the element should fill its line instead. */
+.vdr-container[data-layout='flow'] {
+  position: relative;
+  display: inline-block;
+}
+
+/* An outline, not a border: the frame never contributes to the box model, so `w` / `h` always
+   equal the true content size. Drawn inwards, in the band the old inside border occupied. */
 .vdr-container[data-active] {
-  border-color: var(--vdr-border-color, #000);
-  border-style: dashed;
+  outline: var(--vdr-border-width, 1px) dashed var(--vdr-border-color, #000);
+  outline-offset: calc(-1 * var(--vdr-border-width, 1px));
 }
 
 .vdr-container[data-dragging] {
-  border-style: solid;
+  outline-style: solid;
 }
 
 .vdr-container[data-dragging],

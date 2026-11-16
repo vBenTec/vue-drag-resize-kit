@@ -21,6 +21,14 @@ export interface ResizeInput {
   options: ConstraintOptions
   /** Size of the parent, required for `options.parent`. */
   parentSize: Size | null
+  /**
+   * Keep the edge opposite to the moving one in place by moving the rect when a `t` / `l` edge
+   * is dragged (the default). With `false` the rect never moves: `t` / `l` handles grow the size
+   * by the usual delta, and the element extends per its position in the layout — the policy for
+   * elements in document flow, whose position the browser owns.
+   * @default true
+   */
+  anchor?: boolean
 }
 
 /** Edge moved by the first / second letter of a handle; `m`iddle moves neither. */
@@ -224,6 +232,7 @@ export const resizeRect = ({
   deltaY,
   options,
   parentSize,
+  anchor,
 }: ResizeInput): Rect => {
   const aspectRatio = getLockedAspectRatio(start, options)
   const edges = getResizeEdges(handle, options, aspectRatio !== null)
@@ -234,9 +243,9 @@ export const resizeRect = ({
   const h = edges.vertical ? clamp(start.h + growY, limits.minHeight, limits.maxHeight) : start.h
 
   return {
-    // The edge opposite to the moving one stays in place.
-    x: edges.horizontal === 'l' ? start.x + start.w - w : start.x,
-    y: edges.vertical === 't' ? start.y + start.h - h : start.y,
+    // The edge opposite to the moving one stays in place; without `anchor` the rect never moves.
+    x: anchor !== false && edges.horizontal === 'l' ? start.x + start.w - w : start.x,
+    y: anchor !== false && edges.vertical === 't' ? start.y + start.h - h : start.y,
     w,
     h,
   }

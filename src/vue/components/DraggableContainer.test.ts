@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick, reactive } from 'vue'
 
-import { pointer, rectOf, setInnerSize } from '../../test-utils'
+import { pointer, rectOf, setInnerSize, setOffset } from '../../test-utils'
 import type { DraggableContainerProps } from '../types'
 import DraggableContainer from './DraggableContainer.vue'
 import DraggableResizable from './DraggableResizable.vue'
@@ -147,6 +147,29 @@ describe('DraggableContainer', () => {
     pointer(document, 'pointermove', 38, 0)
     await nextTick()
     expect(rectOf(a).x).toBe(170)
+  })
+
+  it('snaps to a flow element where the browser placed it, not at its x / y', async () => {
+    const wrapper = mount(
+      defineComponent(
+        () => () =>
+          h(DraggableContainer, { snapToParent: false }, () => [
+            h(DraggableResizable, { class: 'a', initW: 50, initH: 50 }),
+            h(DraggableResizable, { class: 'b', layout: 'flow', w: 50, h: 50 }),
+          ]),
+      ),
+      { attachTo: document.body },
+    )
+    // The browser laid b out at 120/40 in the container; its x / y stay 0.
+    setOffset(wrapper.get('.b').element, 120, 40)
+    const a = wrapper.get('.a').element
+
+    // a's right edge comes within 3px of b's left edge, its top within 3px of b's bottom.
+    pointer(a, 'pointerdown', 0, 0)
+    pointer(document, 'pointermove', 67, 87)
+    await nextTick()
+    expect(rectOf(a)).toMatchObject({ x: 70, y: 90 })
+    await release()
   })
 
   it('forgets elements that are unmounted', async () => {

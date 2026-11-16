@@ -21,3 +21,19 @@ it('renders on the server without touching the DOM', async () => {
   expect(html).toContain('left:10px;top:20px;width:30px;height:40px')
   expect(html).toContain('vdr-handle-br')
 })
+
+const render = (props: Record<string, unknown>) =>
+  renderToString(createSSRApp({ render: () => h(DraggableResizable, props) }))
+
+it('renders flow layout without position styles, and without size styles while natural', async () => {
+  const natural = await render({ layout: 'flow' })
+  expect(natural).toContain('data-layout="flow"')
+  for (const styleProp of ['left', 'top', 'width', 'height']) {
+    expect(natural).not.toContain(`${styleProp}:`)
+  }
+
+  const explicit = await render({ layout: 'flow', initW: 30, initH: 40 })
+  expect(explicit).toContain('width:30px;height:40px')
+  expect(explicit).not.toContain('left:')
+  expect(explicit).not.toContain('top:')
+})

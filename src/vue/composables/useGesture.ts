@@ -16,6 +16,8 @@ export interface UseGestureOptions {
   constraints: Readonly<Ref<ConstraintOptions>>
   draggable: () => boolean
   resizable: () => boolean
+  /** Whether resizing from a `t` / `l` edge moves the rect to keep the opposite edge in place. */
+  anchor: () => boolean
   /** Membership in a `DraggableContainer`, for snapping while dragging. */
   member: ContainerMember | null
   emit: DraggableResizableEmit
@@ -31,6 +33,7 @@ export const useGesture = ({
   constraints,
   draggable,
   resizable,
+  anchor,
   member,
   emit,
 }: UseGestureOptions) => {
@@ -81,12 +84,20 @@ export const useGesture = ({
     const snap = member?.startSnap(parentSize.value) ?? null
 
     gesture.value = { kind: 'drag' }
-    emit('drag-start', { ...origin })
+    // `drag-start` waits for the first movement: a press that never moves emits nothing.
+    let started = false
 
     track(
       event,
       {
         onMove: (deltaX, deltaY) => {
+          // Some touch stacks fire one zero-delta move right at the press; it is not a movement.
+          if (!started && deltaX === 0 && deltaY === 0) return
+          if (!started) {
+            started = true
+            emit('drag-start', { ...origin })
+          }
+
           const current = rect.value
           const next = dragRect({
             start: { ...current, ...origin },
@@ -102,7 +113,9 @@ export const useGesture = ({
           rect.value = { ...current, x: next.x, y: next.y }
           emit('dragging', { x: next.x, y: next.y })
         },
-        onEnd: () => emit('drag-end', { x: rect.value.x, y: rect.value.y }),
+        onEnd: () => {
+          if (started) emit('drag-end', { x: rect.value.x, y: rect.value.y })
+        },
       },
       () => snap?.end(),
     )
@@ -115,10 +128,17 @@ export const useGesture = ({
     const start = rect.value
 
     gesture.value = { kind: 'resize', handle }
-    emit('resize-start', start)
+    // `resize-start` waits for the first movement: a press that never moves emits nothing.
+    let started = false
 
     track(event, {
       onMove: (deltaX, deltaY) => {
+        if (!started && deltaX === 0 && deltaY === 0) return
+        if (!started) {
+          started = true
+          emit('resize-start', start)
+        }
+
         const next = resizeRect({
           handle,
           start,
@@ -126,12 +146,15 @@ export const useGesture = ({
           deltaY,
           options: constraints.value,
           parentSize: parentSize.value,
+          anchor: anchor(),
         })
 
         rect.value = next
         emit('resizing', next)
       },
-      onEnd: () => emit('resize-end', rect.value),
+      onEnd: () => {
+        if (started) emit('resize-end', rect.value)
+      },
     })
   }
 
