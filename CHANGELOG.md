@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+## 1.1.0 — 2026-11-16
+
 ### Added
 
 - `layout` prop (`'absolute' | 'flow'`, default `'absolute'`): `flow` keeps the element in
