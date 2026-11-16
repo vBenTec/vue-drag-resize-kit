@@ -75,7 +75,8 @@ Renovate opens PRs against `main` on a weekly schedule (see `renovate.json`).
 - **Wait for manual review:** major devDependency bumps, lockfile maintenance and GitHub
   Actions updates.
 - **Never touched:** the `vue` peer range is widened by hand, and Renovate is disabled for it.
-  The same goes for `@types/node` majors, and TypeScript is held below 7 (see `renovate.json`).
+  The same goes for the `engines.node` range (it is what consumers need, not the Node version CI
+  runs on) and `@types/node` majors, and TypeScript is held below 7 (see `renovate.json`).
 
 The package has no production dependencies. A merged dependency PR does not by itself call for
 a release. Decide separately whether one is worth cutting.

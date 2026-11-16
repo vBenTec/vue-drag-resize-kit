@@ -82,7 +82,7 @@
     "*.{json,md,css,yml,yaml,html}": "oxfmt --no-error-on-unmatched-pattern"
   },
   "engines": {
-    "node": ">=26.13.1"
+    "node": ">=20"
   },
   "packageManager": "pnpm@12.20.0"
 }
