@@ -25,6 +25,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+> **Check these when upgrading from 1.0.0.** The API is unchanged, but the two changes below
+> alter existing behaviour: code that relied on `drag-start` / `resize-start` firing on a plain
+> press, or on the selection frame being a border inside the element's size, needs adjusting.
+
 - **Drag / resize events require movement.** `drag-start` / `resize-start` are emitted on the
   first actual pointer movement instead of the press, and `*-end` only after a `*-start`:
   pressing and releasing without moving emits no events and writes no models. The
