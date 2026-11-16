@@ -58,7 +58,7 @@
     "@types/node": "^24.19.2",
     "@vitejs/plugin-vue": "^6.0.11",
     "@vitest/browser-playwright": "^5.1.0",
-    "@vue/test-utils": "^2.5.1",
+    "@vue/test-utils": "^2.6.0",
     "happy-dom": "^21.0.4",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
@@ -85,7 +85,7 @@
     "*.{json,md,css,yml,yaml,html}": "oxfmt --no-error-on-unmatched-pattern"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=26.13.1"
   },
-  "packageManager": "pnpm@12.18.0"
+  "packageManager": "pnpm@12.20.0"
 }
