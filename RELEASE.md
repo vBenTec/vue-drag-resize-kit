@@ -9,7 +9,19 @@ Before it installs anything, the workflow fails closed unless:
 - a prerelease version has a named identifier to use as its npm dist-tag (see
   [Prereleases](#prereleases)).
 
-It then runs the full check suite and publishes. Nothing else is automated.
+It then runs the full check suite and publishes. The GitHub Release is not automated (step 4).
+
+## Prerequisite: npm trusted publisher
+
+The workflow publishes through [npm trusted publishing](https://docs.npmjs.com/trusted-publishers)
+(OIDC, with provenance), so there is no npm token in the repository. This is configured once on
+npmjs.com under the package's **Settings → Trusted Publisher → GitHub Actions**:
+
+- Organization or user: `vBenTec`, repository: `vue-drag-resize-kit`
+- Workflow filename: `publish.yml` (the file name only)
+- Environment name: empty (the workflow uses no GitHub environment)
+- Allowed actions: **Allow `npm publish`** must be ticked. Without it only `npm stage publish` is
+  allowed, and the publish step fails with `403 … OIDC permission denied for this action`.
 
 ## 0. Keep the changelog current
 
@@ -59,6 +71,28 @@ and you can reuse the version:
 
 This is only safe because npm never saw the version. If npm already has it, don't move the tag.
 npm versions are immutable, so bump to a new version and release that instead.
+
+If the **publish step itself** fails with a `403` or `404` from the registry, the trusted
+publisher configuration is the usual cause (see the
+[prerequisite](#prerequisite-npm-trusted-publisher)). Check that npm does not have the version
+(`npm view vue-drag-resize-kit versions`), fix the settings on npmjs.com, and re-run only the
+failed job. The tag and the commit stay as they are:
+
+```bash
+gh run rerun <run-id> --failed
+```
+
+## 4. Create the GitHub Release
+
+Once `npm view vue-drag-resize-kit dist-tags` shows the new version, create the GitHub Release
+for the tag, with notes taken from the version's `CHANGELOG.md` section (lead with anything users
+must check when upgrading):
+
+```bash
+gh release create vX.Y.Z --verify-tag --title vX.Y.Z --notes-file notes.md
+```
+
+Add `--prerelease` for a prerelease, so it is not marked as the latest release.
 
 ## Prereleases
 
