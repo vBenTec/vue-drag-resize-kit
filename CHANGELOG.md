@@ -6,6 +6,50 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+Everything below is opt-in: without the new props and custom properties, rendering and resizing
+are pixel for pixel those of 1.1.0.
+
+### Added
+
+- **Logical handles** `ts` / `te`, `ms` / `me`, `bs` / `be` (inline-start / inline-end), resolved
+  against the computed `direction` of the element when it mounts, is activated and a gesture
+  starts — so a `dir="auto"` paragraph that turned RTL is picked up. A logical handle renders as
+  the physical handle it resolves to (`.vdr-handle-mr`, `data-handle="mr"`); a handle that a
+  logical and a physical entry resolve to renders once. `:handles="['te', 'me', 'be']"` gives
+  handles that follow the pointer of a flow image in both LTR and RTL text. New exported types
+  `PhysicalResizeHandle` and `LogicalResizeHandle`; `ResizeHandle` is now their union.
+- `flowAnchor` prop (`'none'` by default, `'start'`, `'end'`, `'center'`, `'auto'`): in flow
+  layout, the edge the browser keeps in place. On a centred line the width changes by twice the
+  pointer delta, so the dragged handle stays under the pointer; `auto` reads the `direction` and
+  `text-align` of the nearest block ancestor. With `hideAnchoredHandles`, the handles on the
+  anchored edge are not rendered. Exported as `FlowAnchor`.
+- Theming custom properties: `--vdr-border-offset` (frame `outline-offset`; `0` draws the frame
+  just outside the content instead of over its outermost pixels), `--vdr-handle-border-width`,
+  `--vdr-handle-radius`, `--vdr-handle-shadow` and `--vdr-handle-hit-size` (a pointer target
+  larger than the drawn handle, e.g. `24px` for WCAG 2.5.8). Handles stay centred on the frame
+  line for any offset and width.
+- `keyboard` prop: the element becomes focusable, activates on focus and deactivates on `Escape`
+  (`Enter` re-activates). While active, the arrow keys resize the inline-end / bottom edges
+  (mirrored in RTL) or move the element (`keyboardMode`, default `move` for a draggable element in
+  absolute layout), by `keyboardStep` px (`Shift` × 10), within all constraints; `Home` / `End`
+  resize to the min / max width. One key sequence emits one `*-start` / `*-end` pair. Exported as
+  `KeyboardMode`.
+- With `keyboard`, ARIA semantics: `role="group"`, `aria-roledescription` (`ariaRoleDescription`,
+  default `"resizable"`) and a visually hidden, polite live size text (`ariaSizeText`, default
+  `"200 × 100"`), updated when a resize ends. Handles now carry `aria-hidden="true"`.
+- With `keyboard`, `:focus-visible` draws the frame before activation. In forced colours mode the
+  frame and the handles are drawn in system colours (`CanvasText` / `Canvas`) and stay visible.
+
+### Notes
+
+- **Handle centring:** while `--vdr-border-offset` is unset, the handles keep their 1.x position,
+  half the frame width outside the content edge, although the default frame line is drawn just
+  inside it (a 1px mismatch). It is kept on purpose so that existing layouts do not shift; set
+  `--vdr-border-offset: calc(-1 * var(--vdr-border-width, 1px))` to centre them exactly on the
+  default frame.
+- `--vdr-handle-radius` / `--vdr-handle-shadow` apply with zero specificity, so existing consumer
+  rules for `border-radius` / `box-shadow` on the handles keep winning.
+
 ## 1.1.0 — 2026-11-16
 
 ### Added

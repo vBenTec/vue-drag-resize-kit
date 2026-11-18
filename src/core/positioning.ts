@@ -1,5 +1,5 @@
 import { getMatchedGuides, snapToGuides } from './guides'
-import type { ConstraintOptions, Guides, Point, Rect, ResizeHandle, Size } from './types'
+import type { ConstraintOptions, Guides, PhysicalResizeHandle, Point, Rect, Size } from './types'
 
 type VerticalEdge = 't' | 'b' | null
 type HorizontalEdge = 'l' | 'r' | null
@@ -12,7 +12,7 @@ export interface ResizeEdges {
 }
 
 export interface ResizeInput {
-  handle: ResizeHandle
+  handle: PhysicalResizeHandle
   /** Rect at the moment the resize started. */
   start: Rect
   /** Pointer movement since the resize started. */
@@ -29,6 +29,13 @@ export interface ResizeInput {
    * @default true
    */
   anchor?: boolean
+  /**
+   * The left and right edges move symmetrically, as for an element on a centred line in document
+   * flow: the width changes by twice the horizontal delta, so the dragged edge follows the
+   * pointer. Only meaningful with `anchor: false`.
+   * @default false
+   */
+  symmetric?: boolean
 }
 
 /** Edge moved by the first / second letter of a handle; `m`iddle moves neither. */
@@ -144,7 +151,7 @@ const getLockedAspectRatio = (start: Rect, options: ConstraintOptions): number |
  * edge handle also moves the adjacent edge: `tm` / `ml` behave like `tl`, `bm` / `mr` like `br`.
  */
 export const getResizeEdges = (
-  handle: ResizeHandle,
+  handle: PhysicalResizeHandle,
   options: ConstraintOptions,
   lockAspectRatio = false,
 ): ResizeEdges => {
@@ -207,7 +214,7 @@ const calculateResizeLimits = (
 
 /** How much each dimension grows for a pointer delta. */
 const calculateGrowth = (
-  handle: ResizeHandle,
+  handle: PhysicalResizeHandle,
   edges: ResizeEdges,
   deltaX: number,
   deltaY: number,
@@ -233,11 +240,18 @@ export const resizeRect = ({
   options,
   parentSize,
   anchor,
+  symmetric,
 }: ResizeInput): Rect => {
   const aspectRatio = getLockedAspectRatio(start, options)
   const edges = getResizeEdges(handle, options, aspectRatio !== null)
   const limits = calculateResizeLimits(edges, start, options, parentSize, aspectRatio)
-  const { growX, growY } = calculateGrowth(handle, edges, deltaX, deltaY, aspectRatio)
+  const { growX, growY } = calculateGrowth(
+    handle,
+    edges,
+    symmetric ? 2 * deltaX : deltaX,
+    deltaY,
+    aspectRatio,
+  )
 
   const w = edges.horizontal ? clamp(start.w + growX, limits.minWidth, limits.maxWidth) : start.w
   const h = edges.vertical ? clamp(start.h + growY, limits.minHeight, limits.maxHeight) : start.h
@@ -249,4 +263,50 @@ export const resizeRect = ({
     w,
     h,
   }
+}
+
+export interface StepResizeInput {
+  /** Rect before the step. */
+  start: Rect
+  /**
+   * How much the width / the height should grow (negative to shrink), one of them `0`. With a
+   * locked aspect ratio the other dimension follows. `±Infinity` resizes to the min / max size.
+   */
+  growW: number
+  growH: number
+  /** Side the width changes on: the inline-end side, `r` in LTR and `l` in RTL. */
+  side: 'l' | 'r'
+  options: ConstraintOptions
+  /** Size of the parent, required for `options.parent`. */
+  parentSize: Size | null
+  /** See {@link ResizeInput.anchor}. @default true */
+  anchor?: boolean
+}
+
+/**
+ * The rect after one keyboard resize step: the bottom edge and the `side` edge move, the others
+ * stay, under the same constraints as a pointer resize from the matching bottom corner.
+ */
+export const stepResizeRect = ({
+  start,
+  growW,
+  growH,
+  side,
+  options,
+  parentSize,
+  anchor,
+}: StepResizeInput): Rect => {
+  // A bottom corner, driven by the horizontal delta: with a locked ratio a height step is turned
+  // into the width step that produces it.
+  const aspectRatio = getLockedAspectRatio(start, options)
+  const widthStep = aspectRatio !== null && growW === 0 ? growH / aspectRatio : growW
+  return resizeRect({
+    handle: side === 'r' ? 'br' : 'bl',
+    start,
+    deltaX: side === 'r' ? widthStep : -widthStep,
+    deltaY: growH,
+    options,
+    parentSize,
+    anchor,
+  })
 }

@@ -11,13 +11,27 @@ immediate parent. Size-only: unlike `parent` it never constrains the position.
 the browser owns its position: `x` / `y` are ignored, dragging is inert, and resizing grows the
 size without ever moving the rect (no `t` / `l` anchoring compensation).
 
+**Flow anchor**: In flow layout, the edge the browser keeps in place while the element resizes —
+the inline-start edge for start-aligned text, both edges moving for a centred line. Resolved from
+the `flowAnchor` prop, for `auto` from the `direction` and `text-align` of the nearest block
+ancestor.
+
 **Gesture**: One drag or one resize of an element, from the first pointer movement after
-pointer-down until the pointer is released or the gesture is cancelled. A press without movement
-is not a gesture and emits no events. An element has at most one gesture at a time.
+pointer-down until the pointer is released or the gesture is cancelled — or a key sequence. A
+press without movement is not a gesture and emits no events. An element has at most one gesture
+at a time.
 
 **Guides**: The coordinates an element can snap to while it is dragged inside a container: custom
 guides, the parent's edges and centre, and the edges and centres of the other members. Vertical
 guides are x coordinates, horizontal guides are y coordinates.
+
+**Key sequence**: With `keyboard`, the arrow (or `Home` / `End`) keys held down at once: one
+gesture from the first step that changes the element until the last of them is released or the
+element loses focus. Key repeats are steps of the same sequence.
+
+**Logical handle**: A handle named by its inline-start / inline-end side (`ts` … `be`) instead of
+left / right, resolved against the element's computed `direction` to the physical handle it
+renders as.
 
 **Matched guides**: The guides the dragged element is currently aligned with. The container draws
 them as lines.

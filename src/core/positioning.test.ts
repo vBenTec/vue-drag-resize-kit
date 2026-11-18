@@ -4,8 +4,10 @@ import {
   dragRect,
   getResizeEdges,
   resizeRect,
+  stepResizeRect,
   type DragInput,
   type ResizeInput,
+  type StepResizeInput,
 } from './positioning'
 import type { Guides, Rect } from './types'
 
@@ -17,6 +19,17 @@ const drag = (input: Partial<DragInput>) =>
 
 const resize = (input: Partial<ResizeInput> & Pick<ResizeInput, 'handle'>) =>
   resizeRect({ start, deltaX: 0, deltaY: 0, options: {}, parentSize: null, ...input })
+
+const step = (input: Partial<StepResizeInput>) =>
+  stepResizeRect({
+    start,
+    growW: 0,
+    growH: 0,
+    side: 'r',
+    options: {},
+    parentSize: null,
+    ...input,
+  })
 
 describe('dragRect', () => {
   // Vertical guides at 0 / 150 / 300, horizontal ones at 0 / 100 / 200.
@@ -293,5 +306,84 @@ describe('resizeRect', () => {
         resize({ handle: 'br', deltaX: 20, deltaY: 5, options, start: { ...start, h: 0 } }),
       ).toMatchObject({ w: 120, h: 5 })
     })
+  })
+})
+
+describe('resizeRect with symmetric edges', () => {
+  it.each([
+    ['mr', 10, { w: 120, h: 50 }],
+    ['ml', -10, { w: 120, h: 50 }],
+    ['br', 10, { w: 120, h: 70 }],
+    ['tl', -10, { w: 120, h: 30 }],
+  ] as const)('%s changes the width by twice the delta', (handle, deltaX, expected) => {
+    expect(resize({ handle, deltaX, deltaY: 20, anchor: false, symmetric: true })).toEqual({
+      x: start.x,
+      y: start.y,
+      ...expected,
+    })
+  })
+
+  it('leaves top / bottom handles alone', () => {
+    expect(
+      resize({ handle: 'bm', deltaX: 10, deltaY: 20, anchor: false, symmetric: true }),
+    ).toEqual({ ...start, h: 70 })
+  })
+
+  it('keeps the ratio and the limits', () => {
+    const options = { lockAspectRatio: true, maxW: 150 }
+    expect(resize({ handle: 'mr', deltaX: 10, options, anchor: false, symmetric: true })).toEqual({
+      ...start,
+      w: 120,
+      h: 60,
+    })
+    expect(resize({ handle: 'mr', deltaX: 40, options, anchor: false, symmetric: true })).toEqual({
+      ...start,
+      w: 150,
+      h: 75,
+    })
+    // Driven by the vertical movement, as without symmetric edges.
+    expect(resize({ handle: 'bm', deltaY: 10, options, anchor: false, symmetric: true })).toEqual({
+      ...start,
+      w: 120,
+      h: 60,
+    })
+  })
+})
+
+describe('stepResizeRect', () => {
+  it('moves the right and bottom edges with side r', () => {
+    expect(step({ growW: 5 })).toEqual({ ...start, w: 105 })
+    expect(step({ growW: -5 })).toEqual({ ...start, w: 95 })
+    expect(step({ growH: 5 })).toEqual({ ...start, h: 55 })
+  })
+
+  it('moves the left and bottom edges with side l, keeping the right edge in absolute layout', () => {
+    expect(step({ side: 'l', growW: 5 })).toEqual({ ...start, x: 95, w: 105 })
+    expect(step({ side: 'l', growH: 5 })).toEqual({ ...start, h: 55 })
+    expect(step({ side: 'l', growW: 5, anchor: false })).toEqual({ ...start, w: 105 })
+  })
+
+  it('applies the constraints', () => {
+    const options = { minW: 98, maxH: 52, parent: true }
+    expect(step({ growW: -5, options, parentSize })).toEqual({ ...start, w: 98 })
+    expect(step({ growH: 5, options, parentSize })).toEqual({ ...start, h: 52 })
+    expect(step({ growW: 500, options, parentSize })).toEqual({ ...start, w: 200 })
+    expect(step({ growW: 5, options: { disabledW: true } })).toEqual(start)
+  })
+
+  it.each(['l', 'r'] as const)('keeps a locked ratio on side %s, top edge in place', (side) => {
+    const options = { lockAspectRatio: true }
+    const x = (w: number) => (side === 'l' ? start.x + start.w - w : start.x)
+    expect(step({ side, growW: 10, options })).toEqual({ x: x(110), y: 50, w: 110, h: 55 })
+    expect(step({ side, growH: 10, options })).toEqual({ x: x(120), y: 50, w: 120, h: 60 })
+    expect(step({ side, growH: -10, options })).toEqual({ x: x(80), y: 50, w: 80, h: 40 })
+  })
+
+  it('resizes to the min / max width for infinite steps', () => {
+    const options = { minW: 30, maxW: 160, lockAspectRatio: true }
+    expect(step({ growW: -Infinity, options })).toEqual({ ...start, w: 30, h: 15 })
+    expect(step({ growW: Infinity, options })).toEqual({ ...start, w: 160, h: 80 })
+    expect(step({ side: 'l', growW: Infinity, options })).toEqual({ x: 40, y: 50, w: 160, h: 80 })
+    expect(step({ growW: Infinity }).w).toBe(Infinity)
   })
 })
