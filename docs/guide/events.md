@@ -20,9 +20,9 @@ wins. Without either, the size is `0` — the component does not measure its con
 layout. In [flow layout](./flow-layout), a size of `0` is natural instead.
 
 An element becomes active when it is pressed, and inactive when the pointer goes down anywhere
-outside it. Handles are only shown while it is active. To keep an element active while the user
-interacts with something else (a toolbar, say), stop the event there:
-`<div @pointerdown.stop>`.
+outside it. Handles are only shown while it is active. Controls that belong to the element go
+into its [`#toolbar` slot](./toolbar), which counts as inside; for anything else that must not
+deactivate it (teleported popovers, say), pass [`ignoreOutside`](./toolbar#teleported-content).
 
 ## Gestures
 
@@ -35,8 +35,12 @@ With [`keyboard`](./accessibility), a key sequence is one gesture: the first arr
 changes anything emits `*-start`, every step `dragging` / `resizing`, and releasing the last held
 key (or losing focus) `*-end` — never one pair per key repeat.
 
+A [`resizeTo`](./toolbar#resizeto) call is one gesture too, ended at once: `resize-start`, one
+`resizing` and `resize-end` — or nothing, if it changes nothing.
+
 Unmounting an element during a drag or resize stops the gesture without emitting `drag-end` /
 `resize-end`.
 
-Writes to the models from outside do not emit drag or resize events. See the
+Writes to the models from outside do not emit drag or resize events; call `resizeTo` instead to
+resize the way a gesture does. See the
 [API reference](/api/draggable-resizable#events) for every event and its payload.

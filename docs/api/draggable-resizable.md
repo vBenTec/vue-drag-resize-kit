@@ -58,6 +58,14 @@ All props are optional and reactive.
 | `ariaRoleDescription` | `string`             | `'resizable'`   | With `keyboard`: the element's `aria-roledescription`. Pass a translation.                     |
 | `ariaSizeText`        | `(w, h) => string`   | `'200 × 100'`   | With `keyboard`: the size text for assistive technology (rounded `w × h` by default).          |
 
+### Toolbar
+
+| Prop               | Type                           | Default    | Description                                                                                                           |
+| ------------------ | ------------------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| `toolbarLabel`     | `string`                       | —          | Accessible name of the [toolbar](/guide/toolbar). Pass a translation.                                                 |
+| `toolbarPlacement` | `ToolbarPlacement`             | `'bottom'` | Side of the [toolbar](/guide/toolbar#placement): `'bottom'`, `'top'`, or `'auto'` to flip it above for lack of room.  |
+| `ignoreOutside`    | `(target: Element) => boolean` | —          | Presses outside the element that must not deactivate it. See [Teleported content](/guide/toolbar#teleported-content). |
+
 ### Class names
 
 | Prop                 | Type     | Default         | Description                                                      |
@@ -95,7 +103,8 @@ Every model is optional; without `v-model` the component keeps the value itself.
 | `resizing`     | `ResizePayload` | On every move while resizing.                               |
 | `resize-end`   | `ResizePayload` | The pointer was released or cancelled, after `resize-start` |
 
-A press without movement emits no drag or resize events; see
+A press without movement emits no drag or resize events, and a [`resizeTo`](/guide/toolbar#resizeto)
+call emits `resize-start`, one `resizing` and `resize-end` at once; see
 [Gestures](/guide/events#gestures).
 
 ```ts
@@ -105,9 +114,16 @@ type ResizePayload = { x: number; y: number; w: number; h: number }
 
 ## Slots
 
-| Slot      | Description            |
-| --------- | ---------------------- |
-| `default` | The element's content. |
+| Slot      | Scoped props                                | Content                                                     |
+| --------- | ------------------------------------------- | ----------------------------------------------------------- |
+| `default` | —                                           | The element's content.                                      |
+| `toolbar` | `rect`, `gesture`, `resizeTo`, `deactivate` | Controls shown while active. See [Toolbar](/guide/toolbar). |
+
+## Instance
+
+| Member     | Type                           | Description                                                                                    |
+| ---------- | ------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `resizeTo` | `(size: ResizeToSize) => void` | Resizes like a gesture and emits the resize events. See [`resizeTo`](/guide/toolbar#resizeto). |
 
 ## Attributes
 

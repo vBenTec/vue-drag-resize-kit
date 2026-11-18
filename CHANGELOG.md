@@ -8,6 +8,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- **Documentation site** at https://vbentec.github.io/vue-drag-resize-kit/, with a live demo on
+  every guide page, the full API reference, the migration guides, and `llms.txt` /
+  `llms-full.txt` for AI assistants. It is published with every release. The README is now a
+  short overview that links into it.
 - **`#toolbar` slot** for controls that act on the element (preset sizes, remove, alt text). It
   renders inside the root in a `<div class="vdr-toolbar" role="toolbar">` while the element is
   active, so presses and focus in it count as inside the element — no `@pointerdown.stop`, no

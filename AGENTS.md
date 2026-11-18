@@ -65,5 +65,9 @@ describe it, in the same pull request. The docs describe `main`, unreleased chan
   on the site.
 - **Repo-only files.** `GLOSSARY.md`, `RELEASE.md` and this file are for contributors and are not
   part of the site.
-- **README.** Until it is slimmed to a landing page, the README still repeats the reference; keep it
-  in sync with the docs meanwhile.
+- **README.** A short landing page for GitHub and npm: pitch, feature list, install, one usage
+  example and links into the site. Reference material goes in `docs/`, not the README. Keep its
+  feature list in step with the features on `docs/index.md`.
+- **Publishing.** Each stable release deploys the site from its tag (`publish.yml` calls
+  `docs.yml`), so the live site matches npm, and the docs on `main` may run ahead of it. See
+  `RELEASE.md`.

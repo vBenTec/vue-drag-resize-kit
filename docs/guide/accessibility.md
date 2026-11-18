@@ -62,8 +62,10 @@ The default handles are 7px squares. Set `--vdr-handle-hit-size: 24px` to give e
 ## Dragging movements (WCAG 2.5.7)
 
 Resizing with the handles is a dragging movement, and the keyboard is not a single-pointer
-alternative. Offer one in your UI — for example preset sizes, written to `v-model:w` /
-`v-model:h`, like the Small / Medium / Large toolbar in the demo above.
+alternative. Offer one in your UI — for example preset sizes in the
+[`#toolbar` slot](./toolbar), like the Small / Medium / Large buttons in the demo above.
 
-`@pointerdown.stop` keeps the element active while the toolbar is used. Writes to the models do
-not emit resize events: persist there as well, or from a `watch`.
+[`resizeTo`](./toolbar#resizeto) applies the same constraints as a gesture and emits the resize
+events, so the presets keep the aspect ratio and are saved by your `@resize-end` handler. The
+toolbar's own keyboard support is described under
+[Keyboard and focus](./toolbar#keyboard-and-focus).

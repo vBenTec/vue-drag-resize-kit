@@ -32,6 +32,7 @@ export default defineConfig({
           { text: 'Getting started', link: '/guide/getting-started' },
           { text: 'Constraints and handles', link: '/guide/constraints' },
           { text: 'Models and events', link: '/guide/events' },
+          { text: 'Toolbar', link: '/guide/toolbar' },
           { text: 'Snapping', link: '/guide/snapping' },
           { text: 'Flow layout', link: '/guide/flow-layout' },
           { text: 'Boundary', link: '/guide/boundary' },
