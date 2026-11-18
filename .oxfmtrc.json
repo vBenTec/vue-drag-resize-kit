@@ -4,5 +4,5 @@
   "semi": false,
   "singleQuote": true,
   "sortImports": {},
-  "ignorePatterns": ["dist", "pnpm-lock.yaml"]
+  "ignorePatterns": ["dist", "docs/.vitepress/cache", "docs/.vitepress/dist", "pnpm-lock.yaml"]
 }

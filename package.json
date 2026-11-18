@@ -51,7 +51,11 @@
     "build": "vite build && rolldown -c rolldown.dts.config.ts",
     "check:pkg": "publint && attw --pack --profile esm-only --exclude-entrypoints style.css",
     "prepublishOnly": "pnpm build && pnpm check:pkg",
-    "prepare": "husky"
+    "prepare": "husky",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "docs:screenshot": "node docs/.vitepress/screenshot.ts"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
@@ -71,6 +75,8 @@
     "rolldown-plugin-dts": "^0.30.2",
     "typescript": "~6.0.3",
     "vite": "^8.3.8",
+    "vitepress": "2.0.0-alpha.21",
+    "vitepress-plugin-llms": "1.14.0",
     "vitest": "^5.1.0",
     "vue": "^3.5.45",
     "vue-tsc": "^3.3.14"

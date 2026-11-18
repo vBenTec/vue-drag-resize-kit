@@ -11,5 +11,5 @@
     "builtin": true,
     "browser": true
   },
-  "ignorePatterns": ["dist"]
+  "ignorePatterns": ["dist", "docs/.vitepress/cache", "docs/.vitepress/dist"]
 }

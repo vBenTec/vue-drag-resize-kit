@@ -1,4 +1,9 @@
-<p align="center"><img src="docs/logo.png" alt="vue-drag-resize-kit"></p>
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/public/hero-dark.png">
+    <img src="docs/public/hero-light.png" width="320" alt="Two Vue logos aligned by snapping guides, one selected with resize handles">
+  </picture>
+</p>
 
 <h1 align="center">vue-drag-resize-kit</h1>
 
