@@ -139,6 +139,23 @@ describe('hideAnchoredHandles', () => {
     expect(renderedHandles(wrapper)).toEqual(expected)
   })
 
+  it.each([
+    ['', ['tr', 'br']],
+    ['direction: rtl', ['tl', 'bl']],
+  ] as const)(
+    'in "%s" hides the anchored corners of the aspect-lock default',
+    async (hostStyle, expected) => {
+      const { wrapper } = mountIn(hostStyle, {
+        layout: 'flow',
+        flowAnchor: 'start',
+        hideAnchoredHandles: true,
+        lockAspectRatio: true,
+      })
+      await nextTick()
+      expect(renderedHandles(wrapper)).toEqual(expected)
+    },
+  )
+
   it('renders every handle without hideAnchoredHandles', async () => {
     const { wrapper } = mountIn('', { layout: 'flow', flowAnchor: 'start' })
     await nextTick()

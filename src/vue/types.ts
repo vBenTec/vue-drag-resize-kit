@@ -64,7 +64,10 @@ export interface DraggableResizableProps {
    * Resize handles to render, physical (`tl` … `br`) or logical (`ts` / `te`, `ms` / `me`,
    * `bs` / `be`: inline-start / inline-end, resolved against the computed `direction` of the
    * element when it mounts, is activated and a gesture starts). A logical handle renders as the
-   * physical one it resolves to; each handle renders once. @default all eight handles
+   * physical one it resolves to; each handle renders once. Edge handles under an effective
+   * `lockAspectRatio` resize from a corner (`tm` / `ml` from the top-left, `bm` / `mr` from the
+   * bottom-right one). @default the four corners while `lockAspectRatio` is in effect (set, and
+   * neither `disabledW` nor `disabledH`), otherwise all eight handles
    */
   handles?: readonly ResizeHandle[]
   /**
@@ -80,7 +83,10 @@ export interface DraggableResizableProps {
    * follow the pointer. A `center` anchor hides none.
    */
   hideAnchoredHandles?: boolean
-  /** Keep the aspect ratio while resizing. */
+  /**
+   * Keep the aspect ratio while resizing. In effect only while neither `disabledW` nor
+   * `disabledH` is set; then the default `handles` are the four corners.
+   */
   lockAspectRatio?: boolean
   /**
    * Keyboard interaction: the element is focusable (`tabindex="0"`), activates on focus and

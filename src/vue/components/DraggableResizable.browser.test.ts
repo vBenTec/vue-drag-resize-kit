@@ -121,7 +121,7 @@ describe('flow layout in an editor column', () => {
     expect(root.getBoundingClientRect().width).toBeCloseTo(state.w, 3)
   })
 
-  it('reflows following content; tr never displaces upwards; mr / br are repeatable', async () => {
+  it('reflows following content; tr never displaces upwards; br is repeatable', async () => {
     const { root, after, state } = await mountEditorImage({ intrinsicW: 300, intrinsicH: 225 })
     const afterTop = after.offsetTop
 
@@ -137,11 +137,11 @@ describe('flow layout in an editor column', () => {
     expect(state.w).toBeCloseTo(wBefore + 50, 3)
     expect(root.getBoundingClientRect().top).toBeCloseTo(top, 3)
 
-    // Two consecutive mr gestures each apply their own delta (no stale offsets).
+    // Two consecutive br gestures each apply their own delta (no stale offsets).
     const w1 = state.w
-    await dragFromCentre(handleOf(root, 'mr'), [[-50, 0]])
+    await dragFromCentre(handleOf(root, 'br'), [[-50, 0]])
     expect(state.w).toBeCloseTo(w1 - 50, 3)
-    await dragFromCentre(handleOf(root, 'mr'), [[-50, 0]])
+    await dragFromCentre(handleOf(root, 'br'), [[-50, 0]])
     expect(state.w).toBeCloseTo(w1 - 100, 3)
   })
 

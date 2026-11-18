@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- **Corner-only default handles under an aspect lock.** With `lockAspectRatio` in effect (and
+  neither `disabledW` nor `disabledH` set), an element without a `handles` prop now renders only
+  the four corner handles `tl`, `tr`, `bl`, `br`. Edge handles cannot change one dimension alone
+  under the lock, so dragging e.g. `mr` also grew the element downwards. This changes rendering
+  for existing `lockAspectRatio` users that don't pass `handles`; pass `handles` to get the edge
+  handles back (their corner-mapping behaviour is unchanged). The default follows
+  `lockAspectRatio`, `disabledW` and `disabledH` at runtime, and still goes through
+  `hideAnchoredHandles`.
+
 ## 1.2.0 — 2026-11-18
 
 Everything below is opt-in: without the new props and custom properties, rendering and resizing

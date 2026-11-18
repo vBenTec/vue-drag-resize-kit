@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
-import { ALL_HANDLES, filterHandles, resolveHandle, resolveHandles } from './handles'
+import {
+  ALL_HANDLES,
+  CORNER_HANDLES,
+  filterHandles,
+  getDefaultHandles,
+  resolveHandle,
+  resolveHandles,
+} from './handles'
 
 describe('filterHandles', () => {
   it('keeps valid handles in the given order', () => {
@@ -52,5 +59,17 @@ describe('resolveHandles', () => {
   it('renders a handle a logical and a physical entry resolve to once', () => {
     expect(resolveHandles(['mr', 'me', 'ms', 'tm', 'nope'], 'ltr')).toEqual(['mr', 'ml', 'tm'])
     expect(resolveHandles(['mr', 'me', 'ms'], 'rtl')).toEqual(['mr', 'ml'])
+  })
+})
+
+describe('getDefaultHandles', () => {
+  it('returns the corners while the aspect lock is in effect', () => {
+    expect(getDefaultHandles({ lockAspectRatio: true })).toBe(CORNER_HANDLES)
+  })
+
+  it('returns all eight handles otherwise', () => {
+    expect(getDefaultHandles({})).toBe(ALL_HANDLES)
+    expect(getDefaultHandles({ lockAspectRatio: true, disabledW: true })).toBe(ALL_HANDLES)
+    expect(getDefaultHandles({ lockAspectRatio: true, disabledH: true })).toBe(ALL_HANDLES)
   })
 })

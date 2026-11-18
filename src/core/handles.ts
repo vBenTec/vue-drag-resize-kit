@@ -1,4 +1,11 @@
-import type { Direction, LogicalResizeHandle, PhysicalResizeHandle, ResizeHandle } from './types'
+import { isAspectLocked } from './positioning'
+import type {
+  ConstraintOptions,
+  Direction,
+  LogicalResizeHandle,
+  PhysicalResizeHandle,
+  ResizeHandle,
+} from './types'
 
 export const ALL_HANDLES = [
   'tl',
@@ -10,6 +17,20 @@ export const ALL_HANDLES = [
   'bm',
   'br',
 ] as const satisfies readonly PhysicalResizeHandle[]
+
+export const CORNER_HANDLES = [
+  'tl',
+  'tr',
+  'bl',
+  'br',
+] as const satisfies readonly PhysicalResizeHandle[]
+
+/**
+ * The handles to render when none are given: the corners while the aspect lock is in effect
+ * (an edge handle cannot change one dimension alone), otherwise all eight.
+ */
+export const getDefaultHandles = (options: ConstraintOptions): readonly PhysicalResizeHandle[] =>
+  isAspectLocked(options) ? CORNER_HANDLES : ALL_HANDLES
 
 const LOGICAL_HANDLES = [
   'ts',

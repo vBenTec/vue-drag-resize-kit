@@ -122,8 +122,8 @@ non-static position). Import the stylesheet once, anywhere in your app.
 | `disabledY`           | `boolean`                 | `false`         | Lock movement on the y-axis.                                                                             |
 | `disabledW`           | `boolean`                 | `false`         | Lock the width.                                                                                          |
 | `disabledH`           | `boolean`                 | `false`         | Lock the height.                                                                                         |
-| `lockAspectRatio`     | `boolean`                 | `false`         | Keep the aspect ratio while resizing.                                                                    |
-| `handles`             | `readonly ResizeHandle[]` | all eight       | Handles to render: `tl` … `br`, or logical `ts` … `be` (below). Unknown / duplicate entries are ignored. |
+| `lockAspectRatio`     | `boolean`                 | `false`         | Keep the aspect ratio while resizing; the default handles become the four corners.                       |
+| `handles`             | `readonly ResizeHandle[]` | see below       | Handles to render: `tl` … `br`, or logical `ts` … `be` (below). Unknown / duplicate entries are ignored. |
 | `flowAnchor`          | `FlowAnchor`              | `'none'`        | Flow layout: the edge that stays put. See [Right-to-left text](#right-to-left-text).                     |
 | `hideAnchoredHandles` | `boolean`                 | `false`         | With a resolved `flowAnchor`: don't render the handles on the anchored edge.                             |
 | `keyboard`            | `boolean`                 | `false`         | Keyboard interaction and ARIA semantics. See [Accessibility](#accessibility).                            |
@@ -141,7 +141,7 @@ non-static position). Import the stylesheet once, anywhere in your app.
 All props are reactive.
 
 Handle names combine a row (`t`op, `m`iddle, `b`ottom) with a column (`l`eft, `m`iddle,
-`r`ight):
+`r`ight). By default all eight render, or only the four corners with `lockAspectRatio` (below):
 
 ```
 tl ─ tm ─ tr
@@ -157,9 +157,11 @@ and `ml` in right-to-left text, `ts` is `tl` / `tr`, and so on. A logical handle
 physical one it resolves to (`.vdr-handle-mr`, `data-handle="mr"`); if a logical and a physical
 entry resolve to the same handle, it renders once. See [Right-to-left text](#right-to-left-text).
 
-With `lockAspectRatio`, corner handles keep the opposite corner in place. Edge handles have to
-change both dimensions, so `tm` and `ml` resize from the top-left corner and `bm` and `mr` from
-the bottom-right one. The lock is ignored while `disabledW` or `disabledH` is set.
+With `lockAspectRatio`, the default handles are the four corners (`tl`, `tr`, `bl`, `br`), and
+each keeps the opposite corner in place. Edge handles can still be opted into via `handles`; as
+they have to change both dimensions, `tm` and `ml` resize from the top-left corner and `bm` and
+`mr` from the bottom-right one. The lock is ignored while `disabledW` or `disabledH` is set, and
+the default is then all eight handles again.
 
 ### Models
 
