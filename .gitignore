@@ -24,3 +24,7 @@ pnpm-debug.log*
 
 # Packed tarballs
 *.tgz
+
+# VitePress
+docs/.vitepress/cache
+docs/.vitepress/dist

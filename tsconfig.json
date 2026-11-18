@@ -11,8 +11,20 @@
     "isolatedModules": true,
     "skipLibCheck": true,
     "jsx": "preserve",
-    "noEmit": true
+    "noEmit": true,
+    // The docs demos import the package by name; type-check them against the source.
+    "paths": {
+      "vue-drag-resize-kit": ["./src/index.ts"]
+    }
   },
-  "include": ["src", "playground", "vite.config.ts", "rolldown.dts.config.ts"],
+  "include": [
+    "src",
+    "playground",
+    "docs/.vitepress/*.ts",
+    "docs/.vitepress/theme",
+    "docs/demos",
+    "vite.config.ts",
+    "rolldown.dts.config.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

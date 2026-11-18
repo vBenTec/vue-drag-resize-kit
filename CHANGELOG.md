@@ -106,7 +106,7 @@ First release of `vue-drag-resize-kit`, a rewrite of `vue3-draggable-resizable` 
 `<script setup>` and TypeScript with working type declarations, a dependency-free ESM build and
 a test suite. Changes relative to `vue3-draggable-resizable` 1.6.1 are listed for users
 migrating. See
-[Migrating from `vue3-draggable-resizable`](README.md#migrating-from-vue3-draggable-resizable).
+[Migrating from `vue3-draggable-resizable`](https://vbentec.github.io/vue-drag-resize-kit/migration/from-vue3-draggable-resizable).
 
 ### Breaking
 
