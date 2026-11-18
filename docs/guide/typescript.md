@@ -10,6 +10,9 @@ import type {
   DraggableResizableEmits,
   DragPayload, // { x, y }
   ResizePayload, // { x, y, w, h }
+  ResizeToSize, // { w, h? } | { w?, h }
+  ToolbarSlotProps, // { rect, gesture, resizeTo, deactivate }
+  ToolbarPlacement, // 'bottom' | 'top' | 'auto'
   Rect, // { x, y, w, h }
   ResizeHandle, // PhysicalResizeHandle | LogicalResizeHandle
   PhysicalResizeHandle, // 'tl' | 'tm' | 'tr' | 'ml' | 'mr' | 'bl' | 'bm' | 'br'

@@ -1,0 +1,73 @@
+name: Docs
+
+on:
+  # Every release: publish.yml calls this once the version is on npm.
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+  # By hand, e.g. for a docs fix between releases (see RELEASE.md).
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Tag or branch to build. Empty builds the latest release.
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+# One deployment at a time, and never cancel one halfway.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # the tags, to find the latest release
+      - name: Check out what to publish
+        # The site documents the released package: a branch may only be published while it has
+        # nothing unreleased, or the docs would describe behaviour that is not on npm yet.
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          if [ -z "$REF" ]; then
+            REF=$(git tag --list 'v*' --sort=-v:refname | grep -v -e '-' | head -n 1)
+          fi
+          git checkout --quiet "$REF"
+
+          if ! git describe --exact-match --tags --match 'v*' HEAD > /dev/null 2>&1; then
+            if awk '/^## Unreleased/ { f = 1; next } /^## / { f = 0 } f && NF { found = 1 } END { exit !found }' CHANGELOG.md; then
+              echo "::error::$REF has unreleased changes in CHANGELOG.md. Release them first, or publish a release tag."
+              exit 1
+            fi
+          fi
+          echo "Building the docs from $REF ($(git rev-parse --short HEAD))."
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.1
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm docs:build
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: docs/.vitepress/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write # deploy-pages proves the deployment came from this workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

@@ -9,7 +9,9 @@ Before it installs anything, the workflow fails closed unless:
 - a prerelease version has a named identifier to use as its npm dist-tag (see
   [Prereleases](#prereleases)).
 
-It then runs the full check suite and publishes. Nothing else is automated.
+It then runs the full check suite and publishes. A stable release (dist-tag `latest`) then
+deploys the documentation site from the same tag through `.github/workflows/docs.yml`, so the
+site always describes the version on npm. Nothing else is automated.
 
 ## 0. Keep the changelog current
 
@@ -59,6 +61,27 @@ and you can reuse the version:
 
 This is only safe because npm never saw the version. If npm already has it, don't move the tag.
 npm versions are immutable, so bump to a new version and release that instead.
+
+## 4. Check the documentation site
+
+After the publish job, the `docs` job deploys https://vbentec.github.io/vue-drag-resize-kit/.
+If only it fails, npm already has the version: don't move the tag. Fix the cause and run the
+**Docs** workflow by hand (Actions → Docs → Run workflow) with the tag as `ref`.
+
+Prereleases don't deploy the site; it stays on the latest stable release.
+
+### Docs fixes between releases
+
+Run the **Docs** workflow by hand with `ref` set to `main`. It refuses while `CHANGELOG.md` has
+entries under `## Unreleased`, because the site would then document behaviour that is not on npm
+yet. In that case the fix goes live with the next release (a patch release is fine). With `ref`
+left empty, the workflow rebuilds the latest stable release.
+
+### Repository setup
+
+Done once, already in place: Pages is enabled with **GitHub Actions** as its source, and the
+`github-pages` environment allows deployments from `main` and from `v*` tags (Settings →
+Environments → github-pages → Deployment branches and tags).
 
 ## Prereleases
 
