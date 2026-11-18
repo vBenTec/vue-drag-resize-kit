@@ -37,3 +37,25 @@ it('renders flow layout without position styles, and without size styles while n
   expect(explicit).not.toContain('left:')
   expect(explicit).not.toContain('top:')
 })
+
+const renderToolbar = (active: boolean) =>
+  renderToString(
+    createSSRApp({
+      render: () =>
+        h(
+          DraggableResizable,
+          { active, toolbarLabel: 'Size' },
+          { toolbar: () => h('button', 'Small') },
+        ),
+    }),
+  )
+
+it('renders the toolbar hidden for an inactive element', async () => {
+  const inactive = await renderToolbar(false)
+  expect(inactive).toMatch(
+    /<div class="vdr-toolbar" role="toolbar" aria-label="Size" data-placement="bottom" style="display:none;?">/,
+  )
+  expect(inactive).toContain('<button>Small</button>')
+  expect(await renderToolbar(true)).not.toMatch(/vdr-toolbar[^>]*display:none/)
+  expect(await render({ active: true })).not.toContain('vdr-toolbar')
+})

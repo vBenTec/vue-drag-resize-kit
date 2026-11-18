@@ -1,13 +1,23 @@
 import { onScopeDispose, readonly, shallowRef, type Ref, type ShallowRef } from 'vue'
 
 import { isPrimaryPointer, trackPointer, type PointerSessionHandlers } from '../../core/pointer'
-import { dragRect, isSameRect, resizeRect, stepResizeRect } from '../../core/positioning'
+import {
+  dragRect,
+  isAspectLocked,
+  isSameRect,
+  resizeRect,
+  stepResizeRect,
+} from '../../core/positioning'
 import type { ConstraintOptions, PhysicalResizeHandle, Rect } from '../../core/types'
-import type { ContainerMember, DraggableResizableEmit } from '../types'
+import type { ContainerMember, DraggableResizableEmit, ResizeToSize } from '../types'
 import { useParentSize } from './useParentSize'
 
 /** The gesture an element is performing: a drag, or a resize by one of its handles. */
 export type Gesture = { kind: 'drag' } | { kind: 'resize'; handle: PhysicalResizeHandle }
+
+/** Whether a `resizeTo` dimension is given: `NaN` is ignored like a missing one. */
+const isGiven = (size: number | undefined): size is number =>
+  size !== undefined && !Number.isNaN(size)
 
 export interface UseGestureOptions {
   /** The element; its parent is measured for `parent` bounds and snapping. */
@@ -203,12 +213,11 @@ export const useGesture = ({
   }
 
   /**
-   * Resizes the element by one keyboard step at the edges of its bottom corner `handle` (see
-   * `stepResizeRect`); the first step that changes it emits `resize-start`. A step to an unbounded
-   * limit (`Infinity` without a max size) is ignored.
+   * The rect a step of `growW` / `growH` at the edges of the bottom corner `handle` resizes to (see
+   * `stepResizeRect`); `null` if it changes nothing or reaches an unbounded limit (`Infinity`
+   * without a max size).
    */
-  const stepResize = (growW: number, growH: number, handle: 'bl' | 'br') => {
-    if (!canStep('resize', resizable())) return
+  const stepResizeTarget = (growW: number, growH: number, handle: 'bl' | 'br') => {
     const current = rect.value
     const next = stepResizeRect({
       start: current,
@@ -219,7 +228,20 @@ export const useGesture = ({
       parentSize: parentSize.value,
       anchor: anchor(),
     })
-    if (!Number.isFinite(next.w) || !Number.isFinite(next.h) || isSameRect(next, current)) return
+    if (!Number.isFinite(next.w) || !Number.isFinite(next.h) || isSameRect(next, current))
+      return null
+    return next
+  }
+
+  /**
+   * Resizes the element by one keyboard step at the edges of its bottom corner `handle` (see
+   * `stepResizeRect`); the first step that changes it emits `resize-start`. A step to an unbounded
+   * limit (`Infinity` without a max size) is ignored.
+   */
+  const stepResize = (growW: number, growH: number, handle: 'bl' | 'br') => {
+    if (!canStep('resize', resizable())) return
+    const next = stepResizeTarget(growW, growH, handle)
+    if (!next) return
     if (!stepping) beginSteps({ kind: 'resize', handle })
     rect.value = next
     emit('resizing', next)
@@ -233,6 +255,31 @@ export const useGesture = ({
     gesture.value = null
     if (current.kind === 'drag') emit('drag-end', { x: rect.value.x, y: rect.value.y })
     else emit('resize-end', rect.value)
+  }
+
+  /**
+   * Resizes the element to `size` at the edges of its bottom corner `handle`, as one gesture that
+   * ends at once: the three resize events, or none if nothing changes. Never joins or ends a
+   * running gesture — it is ignored then. `±Infinity` is the max / min size; a resize to an
+   * unbounded limit is ignored, like a keyboard step.
+   */
+  const resizeTo = (size: ResizeToSize, handle: 'bl' | 'br') => {
+    if (gesture.value || !resizable()) return
+    refreshParentSize()
+    const current = rect.value
+    // With a locked aspect ratio a given width drives, also when it is the current one.
+    const widthDrives = isGiven(size.w) && isAspectLocked(constraints.value)
+    const next = stepResizeTarget(
+      isGiven(size.w) ? size.w - current.w : 0,
+      !widthDrives && isGiven(size.h) ? size.h - current.h : 0,
+      handle,
+    )
+    if (!next) return
+    emit('resize-start', current)
+    rect.value = next
+    emit('resizing', next)
+    // Not `rect.value`: a controlled model only follows once the parent has re-rendered.
+    emit('resize-end', next)
   }
 
   // Unmounting mid-gesture stops it without emitting an end event and hides its matched guides.
@@ -249,5 +296,6 @@ export const useGesture = ({
     stepDrag,
     stepResize,
     endSteps,
+    resizeTo,
   }
 }

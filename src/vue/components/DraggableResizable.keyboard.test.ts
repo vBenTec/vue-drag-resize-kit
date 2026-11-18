@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import { h, nextTick } from 'vue'
 
-import { mountElement as mountAt, rectOf, type ElementProps } from '../../test-utils'
+import { key, mountElement as mountAt, rectOf, type ElementProps } from '../../test-utils'
 import DraggableResizable from './DraggableResizable.vue'
 
 /** Mounts a 100x50 element at 100/100 inside a 300x300 parent, with keyboard interaction. */
@@ -10,12 +10,6 @@ const mountElement = (props: ElementProps = {}, hostStyle = '') =>
   mountAt({ keyboard: true, draggable: false, ...props }, hostStyle)
 
 type Wrapper = ReturnType<typeof mountElement>
-
-const key = (target: EventTarget, type: 'keydown' | 'keyup', name: string, init = {}) => {
-  const event = new KeyboardEvent(type, { key: name, bubbles: true, cancelable: true, ...init })
-  target.dispatchEvent(event)
-  return event
-}
 
 /** Presses and releases `name` on the element, `times` times. */
 const press = async (wrapper: Wrapper, name: string, times = 1, init = {}) => {

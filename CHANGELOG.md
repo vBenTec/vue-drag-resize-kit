@@ -6,6 +6,28 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- **`#toolbar` slot** for controls that act on the element (preset sizes, remove, alt text). It
+  renders inside the root in a `<div class="vdr-toolbar" role="toolbar">` while the element is
+  active, so presses and focus in it count as inside the element — no `@pointerdown.stop`, no
+  positioning code. Scoped props: `rect`, `gesture`, `resizeTo` and `deactivate`. Presses in it
+  start no gesture and clicks do not activate; the events are not stopped, so listeners on the
+  element see them. `ArrowLeft` / `ArrowRight` (mirrored in RTL), `Home` and `End` move focus
+  between its items, `Escape` returns focus to the element (with `keyboard`), and focus moves to
+  the element when it is deactivated from the toolbar. New props `toolbarLabel` (its
+  `aria-label`) and `toolbarPlacement` (`'bottom'` by default, `'top'`, or `'auto'` to flip above
+  when there is no room below in the viewport or the nearest clipping ancestor); the side is
+  exposed as `data-placement`. New custom property `--vdr-toolbar-offset` (`4px`).
+- **`resizeTo(size)`**, as a toolbar slot prop and on the component instance: resizes to
+  `{ w }`, `{ h }` or both under the same constraints as a gesture (min / max, `boundary`,
+  `parent`, `disabled*`, `lockAspectRatio`) and emits `resize-start`, `resizing` and
+  `resize-end` once, so presets are persisted like any other resize. `Infinity` is the maximum
+  allowed size, `0` the minimum. Ignored during a gesture.
+- `ignoreOutside` prop: a predicate for presses outside the element that must not deactivate it,
+  e.g. in teleported content opened from the toolbar.
+- Exported types `ToolbarSlotProps`, `ResizeToSize` and `ToolbarPlacement`.
+
 ### Changed
 
 - **Corner-only default handles under an aspect lock.** With `lockAspectRatio` in effect (and

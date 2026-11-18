@@ -49,3 +49,9 @@ export const getAnchoredEdge = (
 /** Whether `handle` sits on the anchored edge — a `center` anchor has none. */
 export const isOnAnchoredEdge = (handle: PhysicalResizeHandle, edge: AnchoredEdge | null) =>
   (edge === 'left' && handle.charAt(1) === 'l') || (edge === 'right' && handle.charAt(1) === 'r')
+
+/**
+ * The bottom corner on the inline-end edge — `br` in LTR, `bl` in RTL — where keyboard resizing
+ * and `resizeTo` change the size.
+ */
+export const getInlineEndCorner = (direction: Direction) => (direction === 'rtl' ? 'bl' : 'br')

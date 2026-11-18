@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { getAnchoredEdge, isOnAnchoredEdge } from './direction'
+import { getAnchoredEdge, getInlineEndCorner, isOnAnchoredEdge } from './direction'
 
 describe('getAnchoredEdge', () => {
   it('resolves explicit anchors against the direction', () => {
@@ -41,5 +41,12 @@ describe('isOnAnchoredEdge', () => {
     expect(isOnAnchoredEdge('mr', 'left')).toBe(false)
     expect(isOnAnchoredEdge('mr', 'center')).toBe(false)
     expect(isOnAnchoredEdge('ml', null)).toBe(false)
+  })
+})
+
+describe('getInlineEndCorner', () => {
+  it('is the bottom corner at the inline end', () => {
+    expect(getInlineEndCorner('ltr')).toBe('br')
+    expect(getInlineEndCorner('rtl')).toBe('bl')
   })
 })

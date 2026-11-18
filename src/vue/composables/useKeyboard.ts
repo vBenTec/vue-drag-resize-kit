@@ -1,5 +1,6 @@
 import type { Ref } from 'vue'
 
+import { getInlineEndCorner } from '../../core/direction'
 import type { Direction } from '../../core/types'
 import type { KeyboardMode } from '../types'
 
@@ -61,9 +62,9 @@ export const useKeyboard = ({
       return true
     }
 
-    // The width changes at the inline-end edge: the `be` corner, `br` in LTR and `bl` in RTL.
+    // The width changes at the inline-end edge.
     const rtl = direction() === 'rtl'
-    const handle = rtl ? 'bl' : 'br'
+    const handle = getInlineEndCorner(direction())
     if (key === 'Home') stepResize(-Infinity, 0, handle)
     else if (key === 'End') stepResize(Infinity, 0, handle)
     else if (!arrow) return false

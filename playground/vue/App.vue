@@ -118,6 +118,43 @@
       </p>
     </div>
 
+    <h2>Toolbar slot</h2>
+    <div>
+      placement:
+      <select v-model="toolbar.placement">
+        <option value="bottom">bottom</option>
+        <option value="top">top</option>
+        <option value="auto">auto</option>
+      </select>
+      — last resize-end: {{ toolbar.lastResizeEnd ?? '—' }}. The box clips its overflow: with
+      <code>auto</code>, "Best fit" leaves no room below and the toolbar flips above.
+    </div>
+    <div class="editor gmail clipped">
+      <p>Text before the image.</p>
+      <DraggableResizable
+        layout="flow"
+        boundary=".editor"
+        lockAspectRatio
+        keyboard
+        aria-label="Example image"
+        toolbarLabel="Image size"
+        :toolbarPlacement="toolbar.placement"
+        v-model:w="toolbar.w"
+        v-model:h="toolbar.h"
+        v-model:active="toolbar.active"
+        @resize-end="toolbar.lastResizeEnd = `${$event.w.toFixed(1)} × ${$event.h.toFixed(1)}`"
+      >
+        <img :src="imageSrc" alt="Example" style="display: block; width: 100%; height: 100%" />
+        <template #toolbar="{ resizeTo, deactivate, rect }">
+          <button @click="resizeTo({ w: 120 })">Small</button>
+          <button @click="resizeTo({ w: 240 })">Medium</button>
+          <button @click="resizeTo({ w: Infinity })">Best fit</button>
+          <button @click="deactivate">Done</button>
+          {{ Math.round(rect.w) }} × {{ Math.round(rect.h) }}
+        </template>
+      </DraggableResizable>
+    </div>
+
     <h2>Snapping container</h2>
     <div class="parent">
       <DraggableContainer>
@@ -188,7 +225,7 @@
 import { reactive } from 'vue'
 
 import { DraggableContainer, DraggableResizable } from '../../src'
-import type { DragPayload, ResizePayload } from '../../src'
+import type { DragPayload, ResizePayload, ToolbarPlacement } from '../../src'
 
 const state = reactive({
   x: 100,
@@ -212,6 +249,14 @@ const rtl = reactive({
   w: 240,
   h: 180,
   active: false,
+})
+
+const toolbar = reactive({
+  placement: 'auto' as ToolbarPlacement,
+  w: 240,
+  h: 180,
+  active: false,
+  lastResizeEnd: null as string | null,
 })
 
 const imageSrc =
@@ -241,6 +286,11 @@ const print = (msg: string, payload?: DragPayload | ResizePayload) => {
   --vdr-handle-border-color: #fff;
   --vdr-handle-border-width: 2px;
   --vdr-handle-hit-size: 24px;
+}
+
+.clipped {
+  height: 420px;
+  overflow: hidden;
 }
 
 .parent {

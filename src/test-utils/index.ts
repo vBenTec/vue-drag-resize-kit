@@ -26,6 +26,17 @@ export const pointer = (
     }),
   )
 
+export const key = (
+  target: EventTarget,
+  type: 'keydown' | 'keyup',
+  name: string,
+  init: KeyboardEventInit = {},
+) => {
+  const event = new KeyboardEvent(type, { key: name, bubbles: true, cancelable: true, ...init })
+  target.dispatchEvent(event)
+  return event
+}
+
 /** Presses on `target`, moves by the given distance and releases. */
 export const dragBy = async (target: Element, deltaX: number, deltaY: number) => {
   pointer(target, 'pointerdown', 100, 100)
@@ -54,13 +65,18 @@ export type ElementProps = DraggableResizableProps & {
  * Mounts a 100x50 element at 100/100 inside a 300x300 parent, in a host with the given styles
  * (happy-dom inherits `direction` from styles, not from the `dir` attribute).
  */
-export const mountElement = (props: ElementProps = {}, hostStyle = '') => {
+export const mountElement = (
+  props: ElementProps = {},
+  hostStyle = '',
+  slots?: Record<string, (props: never) => unknown>,
+) => {
   const host = document.createElement('div')
   host.style.cssText = hostStyle
   document.body.appendChild(host)
   const wrapper = mount(DraggableResizable, {
     attachTo: host,
     props: { x: 100, y: 100, w: 100, h: 50, ...props },
+    slots,
   })
   setInnerSize(wrapper.element.parentElement!, 300, 300)
   return wrapper
@@ -127,10 +143,10 @@ export const setMeasuredSize = (element: Element, width: number, height: number)
     const resolved = resolve(target, pseudo)
     if (target !== element) return resolved
     return new Proxy(resolved, {
-      get: (base, key) => {
-        if (key === 'width') return style.width || `${width}px`
-        if (key === 'height') return style.height || `${height}px`
-        return Reflect.get(base, key)
+      get: (base, property) => {
+        if (property === 'width') return style.width || `${width}px`
+        if (property === 'height') return style.height || `${height}px`
+        return Reflect.get(base, property)
       },
     })
   })
