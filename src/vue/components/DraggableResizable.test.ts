@@ -2,10 +2,11 @@ import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 
-import { ALL_HANDLES } from '../../core/handles'
+import { ALL_HANDLES, CORNER_HANDLES } from '../../core/handles'
 import type { ResizeHandle } from '../../core/types'
 import {
   dragBy,
+  handleNames,
   handleOf,
   mountElement,
   pointer,
@@ -78,6 +79,40 @@ describe('rendering', () => {
     expect(wrapper.attributes('data-dragging')).toBeUndefined()
     expect(wrapper.attributes('data-resizing')).toBe('br')
     expect(wrapper.classes()).toContain('vdr-resizing')
+  })
+
+  it('renders only the corner handles by default while the aspect lock is in effect', () => {
+    expect(handleNames(mountElement({ lockAspectRatio: true }).element)).toEqual([
+      ...CORNER_HANDLES,
+    ])
+    expect(handleNames(mountElement({ lockAspectRatio: true, disabledW: true }).element)).toEqual([
+      ...ALL_HANDLES,
+    ])
+    expect(handleNames(mountElement({ lockAspectRatio: true, disabledH: true }).element)).toEqual([
+      ...ALL_HANDLES,
+    ])
+  })
+
+  it('renders explicitly passed handles under the aspect lock', () => {
+    const wrapper = mountElement({ lockAspectRatio: true, handles: ['mr', 'tm'] })
+    expect(handleNames(wrapper.element)).toEqual(['mr', 'tm'])
+  })
+
+  it('updates the default handles when the aspect lock changes', async () => {
+    const wrapper = mountElement()
+    expect(handleNames(wrapper.element)).toEqual([...ALL_HANDLES])
+
+    await wrapper.setProps({ lockAspectRatio: true })
+    expect(handleNames(wrapper.element)).toEqual([...CORNER_HANDLES])
+
+    await wrapper.setProps({ disabledH: true })
+    expect(handleNames(wrapper.element)).toEqual([...ALL_HANDLES])
+
+    await wrapper.setProps({ disabledH: false })
+    expect(handleNames(wrapper.element)).toEqual([...CORNER_HANDLES])
+
+    await wrapper.setProps({ lockAspectRatio: false })
+    expect(handleNames(wrapper.element)).toEqual([...ALL_HANDLES])
   })
 
   it('does not duplicate the default handle class', () => {
@@ -281,7 +316,8 @@ describe('resizing', () => {
   })
 
   it('keeps the aspect ratio only with lockAspectRatio', async () => {
-    const wrapper = mountElement({ active: true })
+    // An explicit edge handle under the lock resizes from the bottom-right corner.
+    const wrapper = mountElement({ active: true, handles: ['mr'] })
     await dragBy(handle(wrapper, 'mr'), 20, 0)
     expect(rectOf(wrapper.element)).toMatchObject({ w: 120, h: 50 })
 

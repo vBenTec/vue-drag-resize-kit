@@ -139,7 +139,7 @@ describe('semantics', () => {
   it('hides the handles from assistive technology', async () => {
     const { root } = await mountKeyboardImage()
     const handles = [...root.querySelectorAll('.vdr-handle')]
-    expect(handles).toHaveLength(8)
+    expect(handles).toHaveLength(4)
     for (const handle of handles) {
       expect(handle.getAttribute('aria-hidden')).toBe('true')
       expect(handle.hasAttribute('tabindex')).toBe(false)

@@ -96,7 +96,7 @@ describe('flowAnchor="auto"', () => {
   ])('%s centred line: the dragged handle stays under the pointer', async (_, paragraph) => {
     const { root, state } = await mountParagraphImage(paragraph, { flowAnchor: 'auto' })
 
-    const right = handleOf(root, 'mr')
+    const right = handleOf(root, 'br')
     let pointerAt = await dragFromCentre(right, [[-30, 0]])
     expect(state.w).toBeCloseTo(140, 3)
     expect(Math.abs(centreOf(right).x - pointerAt.x)).toBeLessThanOrEqual(1)
@@ -109,19 +109,19 @@ describe('flowAnchor="auto"', () => {
 
   it('without it, a centred line leaves the handle behind (the 1.1 behaviour)', async () => {
     const { root, state } = await mountParagraphImage('<p style="text-align: center">')
-    const right = handleOf(root, 'mr')
+    const right = handleOf(root, 'br')
     const pointerAt = await dragFromCentre(right, [[-30, 0]])
     expect(state.w).toBeCloseTo(170, 3)
     expect(centreOf(right).x - pointerAt.x).toBeCloseTo(15, 0)
   })
 
   it.each([
-    ['LTR start', '<p>', ['tm', 'tr', 'mr', 'bm', 'br']],
-    ['RTL start', '<p dir="rtl">', ['tl', 'tm', 'ml', 'bl', 'bm']],
-    ['LTR end', '<p style="text-align: end">', ['tl', 'tm', 'ml', 'bl', 'bm']],
-    ['RTL right', '<p dir="rtl" style="text-align: right">', ['tl', 'tm', 'ml', 'bl', 'bm']],
-    ['justified', '<p style="text-align: justify">', ['tm', 'tr', 'mr', 'bm', 'br']],
-    ['centred', '<p style="text-align: center">', ['tl', 'tm', 'tr', 'ml', 'mr', 'bl', 'bm', 'br']],
+    ['LTR start', '<p>', ['tr', 'br']],
+    ['RTL start', '<p dir="rtl">', ['tl', 'bl']],
+    ['LTR end', '<p style="text-align: end">', ['tl', 'bl']],
+    ['RTL right', '<p dir="rtl" style="text-align: right">', ['tl', 'bl']],
+    ['justified', '<p style="text-align: justify">', ['tr', 'br']],
+    ['centred', '<p style="text-align: center">', ['tl', 'tr', 'bl', 'br']],
   ])(
     '%s with hideAnchoredHandles renders only the moving edges',
     async (_, paragraph, expected) => {
@@ -131,11 +131,11 @@ describe('flowAnchor="auto"', () => {
       })
       expect(handleNames(root)).toEqual(expected)
 
-      // Every remaining side handle follows the pointer.
-      for (const name of ['ml', 'mr'].filter((side) => expected.includes(side))) {
+      // Every remaining bottom corner follows the pointer horizontally.
+      for (const name of ['bl', 'br'].filter((corner) => expected.includes(corner))) {
         const handle = handleOf(root, name)
         // oxlint-disable-next-line no-await-in-loop -- one gesture after the other
-        const pointerAt = await dragFromCentre(handle, [[name === 'mr' ? -10 : 10, 0]])
+        const pointerAt = await dragFromCentre(handle, [[name === 'br' ? -10 : 10, 0]])
         expect(Math.abs(centreOf(handle).x - pointerAt.x)).toBeLessThanOrEqual(1)
       }
     },

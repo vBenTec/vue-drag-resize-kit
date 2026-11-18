@@ -139,9 +139,16 @@ export const dragRect = ({
   return { ...snapped, matchedGuides: getMatchedGuides({ ...start, ...snapped }, guides) }
 }
 
+/**
+ * Whether the aspect lock is in effect: `lockAspectRatio` is set and both dimensions can change.
+ * The rendered default handles and the gesture both follow it.
+ */
+export const isAspectLocked = (options: ConstraintOptions): boolean =>
+  !!options.lockAspectRatio && !options.disabledW && !options.disabledH
+
 /** The aspect ratio (h / w) to preserve, or `null` if it cannot or should not be preserved. */
 const getLockedAspectRatio = (start: Rect, options: ConstraintOptions): number | null => {
-  if (!options.lockAspectRatio || options.disabledW || options.disabledH) return null
+  if (!isAspectLocked(options)) return null
   const ratio = start.h / start.w
   return Number.isFinite(ratio) && ratio > 0 ? ratio : null
 }

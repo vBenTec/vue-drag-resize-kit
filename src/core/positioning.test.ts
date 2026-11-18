@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   dragRect,
   getResizeEdges,
+  isAspectLocked,
   resizeRect,
   stepResizeRect,
   type DragInput,
@@ -119,6 +120,16 @@ describe('dragRect', () => {
     const options = { parent: true }
     expect(drag({ deltaX: -99, options, parentSize, guides: outside })).toMatchObject({ x: 0 })
     expect(drag({ deltaX: 99, options, parentSize, guides: outside })).toMatchObject({ x: 200 })
+  })
+})
+
+describe('isAspectLocked', () => {
+  it('holds only while lockAspectRatio is set and both dimensions can change', () => {
+    expect(isAspectLocked({})).toBe(false)
+    expect(isAspectLocked({ lockAspectRatio: true })).toBe(true)
+    expect(isAspectLocked({ lockAspectRatio: true, disabledW: true })).toBe(false)
+    expect(isAspectLocked({ lockAspectRatio: true, disabledH: true })).toBe(false)
+    expect(isAspectLocked({ lockAspectRatio: false, disabledW: false })).toBe(false)
   })
 })
 

@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, useId, useTemplateRef, watch } from 'vue'
 
 import { isOnAnchoredEdge } from '../../core/direction'
-import { ALL_HANDLES, resolveHandles } from '../../core/handles'
+import { getDefaultHandles, resolveHandles } from '../../core/handles'
 import type { ConstraintOptions, PhysicalResizeHandle, Rect } from '../../core/types'
 import { useBoundarySize } from '../composables/useBoundarySize'
 import { useContainerMember } from '../composables/useContainer'
@@ -26,7 +26,7 @@ const {
   maxW,
   maxH,
   parent,
-  handles = ALL_HANDLES,
+  handles,
   flowAnchor = 'none',
   hideAnchoredHandles,
   lockAspectRatio,
@@ -209,7 +209,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutsidePoint
 const visibleHandles = computed(() => {
   if (!resizable) return []
   const hidden = hideAnchoredHandles ? anchoredEdge.value : null
-  return resolveHandles(handles, direction.value).filter(
+  // The default follows the same aspect-lock predicate as the gesture, so they never disagree.
+  return resolveHandles(handles ?? getDefaultHandles(constraints.value), direction.value).filter(
     (handle) => !isOnAnchoredEdge(handle, hidden),
   )
 })
