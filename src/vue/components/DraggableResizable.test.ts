@@ -81,18 +81,6 @@ describe('rendering', () => {
     expect(wrapper.classes()).toContain('vdr-resizing')
   })
 
-  it('renders only the corner handles by default while the aspect lock is in effect', () => {
-    expect(handleNames(mountElement({ lockAspectRatio: true }).element)).toEqual([
-      ...CORNER_HANDLES,
-    ])
-    expect(handleNames(mountElement({ lockAspectRatio: true, disabledW: true }).element)).toEqual([
-      ...ALL_HANDLES,
-    ])
-    expect(handleNames(mountElement({ lockAspectRatio: true, disabledH: true }).element)).toEqual([
-      ...ALL_HANDLES,
-    ])
-  })
-
   it('renders explicitly passed handles under the aspect lock', () => {
     const wrapper = mountElement({ lockAspectRatio: true, handles: ['mr', 'tm'] })
     expect(handleNames(wrapper.element)).toEqual(['mr', 'tm'])

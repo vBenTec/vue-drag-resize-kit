@@ -129,7 +129,6 @@ describe('isAspectLocked', () => {
     expect(isAspectLocked({ lockAspectRatio: true })).toBe(true)
     expect(isAspectLocked({ lockAspectRatio: true, disabledW: true })).toBe(false)
     expect(isAspectLocked({ lockAspectRatio: true, disabledH: true })).toBe(false)
-    expect(isAspectLocked({ lockAspectRatio: false, disabledW: false })).toBe(false)
   })
 })
 

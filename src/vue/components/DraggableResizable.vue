@@ -210,7 +210,9 @@ const visibleHandles = computed(() => {
   if (!resizable) return []
   const hidden = hideAnchoredHandles ? anchoredEdge.value : null
   // The default follows the same aspect-lock predicate as the gesture, so they never disagree.
-  return resolveHandles(handles ?? getDefaultHandles(constraints.value), direction.value).filter(
+  // Only the three flags it reads, not `constraints`, which changes on every boundary resize.
+  const defaults = getDefaultHandles({ lockAspectRatio, disabledW, disabledH })
+  return resolveHandles(handles ?? defaults, direction.value).filter(
     (handle) => !isOnAnchoredEdge(handle, hidden),
   )
 })

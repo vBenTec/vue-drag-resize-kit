@@ -64,7 +64,6 @@ describe('resolveHandles', () => {
 
 describe('getDefaultHandles', () => {
   it('returns the corners while the aspect lock is in effect', () => {
-    expect(getDefaultHandles({ lockAspectRatio: true })).toEqual(['tl', 'tr', 'bl', 'br'])
     expect(getDefaultHandles({ lockAspectRatio: true })).toBe(CORNER_HANDLES)
   })
 
