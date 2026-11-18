@@ -1,19 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { h, nextTick, reactive } from 'vue'
+import { reactive } from 'vue'
 
-import { pointer } from '../../test-utils'
+import { handleNames, handleOf } from '../../test-utils'
 import {
+  activate,
   centreOf,
   dragFromCentre,
   fixture,
-  handleNames,
-  handleOf,
-  mountInto,
-  svgImage,
+  mountControlledImage,
+  rootOf,
   unmountAll,
 } from '../../test-utils/browser'
 import type { DraggableResizableProps } from '../types'
-import DraggableResizable from './DraggableResizable.vue'
 
 afterEach(unmountAll)
 
@@ -27,37 +25,11 @@ const mountParagraphImage = async (paragraph: string, props: DraggableResizableP
       `${paragraph}<span class="host"></span></p></div>`,
   )
   const state = reactive({ w: 200, h: 100, active: true })
-  mountInto(editor.querySelector('.host')!, () =>
-    h(
-      DraggableResizable,
-      {
-        layout: 'flow',
-        boundary: '.editor',
-        lockAspectRatio: true,
-        w: state.w,
-        h: state.h,
-        active: state.active,
-        'onUpdate:w': (value: number) => (state.w = value),
-        'onUpdate:h': (value: number) => (state.h = value),
-        'onUpdate:active': (value: boolean) => (state.active = value),
-        ...props,
-      },
-      () =>
-        h('img', { src: svgImage(200, 100), style: 'display: block; width: 100%; height: 100%' }),
-    ),
-  )
-  await nextTick()
-  const root = editor.querySelector<HTMLElement>('.vdr-container')!
-  return { editor, root, state, paragraph: editor.querySelector('p')! }
-}
-
-const activate = async (root: HTMLElement) => {
-  pointer(document.body, 'pointerdown', 0, 0)
-  pointer(document, 'pointerup', 0, 0)
-  await nextTick()
-  pointer(root, 'pointerdown', 1, 1)
-  pointer(document, 'pointerup', 1, 1)
-  await nextTick()
+  await mountControlledImage(editor.querySelector('.host')!, state, [200, 100], {
+    boundary: '.editor',
+    ...props,
+  })
+  return { editor, root: rootOf(editor), state, paragraph: editor.querySelector('p')! }
 }
 
 describe('logical handles', () => {

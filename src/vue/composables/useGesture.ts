@@ -1,7 +1,7 @@
 import { onScopeDispose, readonly, shallowRef, type Ref, type ShallowRef } from 'vue'
 
 import { isPrimaryPointer, trackPointer, type PointerSessionHandlers } from '../../core/pointer'
-import { dragRect, resizeRect, stepResizeRect } from '../../core/positioning'
+import { dragRect, isSameRect, resizeRect, stepResizeRect } from '../../core/positioning'
 import type { ConstraintOptions, PhysicalResizeHandle, Rect } from '../../core/types'
 import type { ContainerMember, DraggableResizableEmit } from '../types'
 import { useParentSize } from './useParentSize'
@@ -203,32 +203,24 @@ export const useGesture = ({
   }
 
   /**
-   * Resizes the element by one keyboard step at its bottom and `side` edges (see
+   * Resizes the element by one keyboard step at the edges of its bottom corner `handle` (see
    * `stepResizeRect`); the first step that changes it emits `resize-start`. A step to an unbounded
    * limit (`Infinity` without a max size) is ignored.
    */
-  const stepResize = (growW: number, growH: number, side: 'l' | 'r') => {
+  const stepResize = (growW: number, growH: number, handle: 'bl' | 'br') => {
     if (!canStep('resize', resizable())) return
     const current = rect.value
     const next = stepResizeRect({
       start: current,
       growW,
       growH,
-      side,
+      handle,
       options: constraints.value,
       parentSize: parentSize.value,
       anchor: anchor(),
     })
-    if (!Number.isFinite(next.w) || !Number.isFinite(next.h)) return
-    if (
-      next.x === current.x &&
-      next.y === current.y &&
-      next.w === current.w &&
-      next.h === current.h
-    ) {
-      return
-    }
-    if (!stepping) beginSteps({ kind: 'resize', handle: side === 'r' ? 'br' : 'bl' })
+    if (!Number.isFinite(next.w) || !Number.isFinite(next.h) || isSameRect(next, current)) return
+    if (!stepping) beginSteps({ kind: 'resize', handle })
     rect.value = next
     emit('resizing', next)
   }

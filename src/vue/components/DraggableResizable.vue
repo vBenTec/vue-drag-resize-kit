@@ -154,6 +154,19 @@ const sizeText = computed<string>((previous) =>
   gesture.value && previous !== undefined ? previous : ariaSizeText(w.value, h.value),
 )
 
+// Focusable and exposed as a group only with keyboard interaction.
+const keyboardAttrs = computed(() =>
+  keyboardEnabled.value
+    ? {
+        'data-keyboard': true,
+        tabindex: 0,
+        role: 'group',
+        'aria-roledescription': ariaRoleDescription,
+        'aria-describedby': sizeId,
+      }
+    : {},
+)
+
 const dragging = computed(() => gesture.value?.kind === 'drag')
 const resizingHandle = computed(() =>
   gesture.value?.kind === 'resize' ? gesture.value.handle : null,
@@ -239,11 +252,7 @@ const handleClasses = (handle: PhysicalResizeHandle) => [
     :data-active="active || undefined"
     :data-dragging="dragging || undefined"
     :data-resizing="resizingHandle ?? undefined"
-    :data-keyboard="keyboardEnabled || undefined"
-    :tabindex="keyboardEnabled ? 0 : undefined"
-    :role="keyboardEnabled ? 'group' : undefined"
-    :aria-roledescription="keyboardEnabled ? ariaRoleDescription : undefined"
-    :aria-describedby="keyboardEnabled ? sizeId : undefined"
+    v-bind="keyboardAttrs"
     @click="active = true"
     @pointerdown="onPointerDown"
     @dragstart.prevent

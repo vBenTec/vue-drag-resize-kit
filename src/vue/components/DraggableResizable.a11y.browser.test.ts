@@ -4,15 +4,14 @@ import { commands, userEvent } from 'vitest/browser'
 import { h, nextTick, reactive } from 'vue'
 
 import type { Rect } from '../../core/types'
+import { handleOf } from '../../test-utils'
 import {
-  centreOf,
   fixture,
-  handleOf,
+  mountControlledImage,
   mountInto,
-  rendered,
   resolveColour,
+  rootOf,
   screenshotPixels,
-  svgImage,
   unmountAll,
 } from '../../test-utils/browser'
 import type { DraggableResizableProps } from '../types'
@@ -24,10 +23,7 @@ declare module 'vitest/browser' {
   }
 }
 
-afterEach(async () => {
-  unmountAll()
-  await commands.setForcedColors(false)
-})
+afterEach(unmountAll)
 
 /**
  * A 200 x 100 flow image with keyboard interaction in an editor column (`paragraph` is the
@@ -46,37 +42,23 @@ const mountKeyboardImage = async (paragraph = '<p>', props: DraggableResizablePr
     steps: [] as Rect[],
     ends: [] as Rect[],
   })
-  mountInto(editor.querySelector('.host')!, () =>
-    h(
-      DraggableResizable,
-      {
-        layout: 'flow',
-        boundary: '.editor',
-        lockAspectRatio: true,
-        keyboard: true,
-        'aria-label': 'Photo',
-        w: state.w,
-        h: state.h,
-        active: state.active,
-        'onUpdate:w': (value: number) => (state.w = value),
-        'onUpdate:h': (value: number) => (state.h = value),
-        'onUpdate:active': (value: boolean) => (state.active = value),
-        'onResize-start': (rect: Rect) => state.starts.push(rect),
-        onResizing: (rect: Rect) => state.steps.push(rect),
-        'onResize-end': (rect: Rect) => state.ends.push(rect),
-        ...props,
-      },
-      () =>
-        h('img', {
-          src: svgImage(200, 100),
-          alt: 'A photo',
-          style: 'display: block; width: 100%; height: 100%',
-        }),
-    ),
+  await mountControlledImage(
+    editor.querySelector('.host')!,
+    state,
+    [200, 100],
+    {
+      boundary: '.editor',
+      keyboard: true,
+      'aria-label': 'Photo',
+      'onResize-start': (rect: Rect) => state.starts.push(rect),
+      onResizing: (rect: Rect) => state.steps.push(rect),
+      'onResize-end': (rect: Rect) => state.ends.push(rect),
+      ...props,
+    },
+    { alt: 'A photo' },
   )
-  await nextTick()
   editor.querySelector('button')!.focus()
-  return { editor, root: editor.querySelector<HTMLElement>('.vdr-container')!, state }
+  return { editor, root: rootOf(editor), state }
 }
 
 describe('keyboard resizing', () => {
@@ -189,7 +171,6 @@ describe('semantics', () => {
     state.active = true
     await nextTick()
     if (focus) root.focus()
-    await rendered()
     expect(handleOf(root, 'br').checkVisibility()).toBe(true)
 
     const results = await axe.run(editor)
@@ -198,6 +179,8 @@ describe('semantics', () => {
 })
 
 describe('forced colors', () => {
+  afterEach(() => commands.setForcedColors(false))
+
   it('keeps the frame and the handles visible in system colours', async () => {
     await commands.setForcedColors(true)
     expect(matchMedia('(forced-colors: active)').matches).toBe(true)
@@ -206,11 +189,10 @@ describe('forced colors', () => {
         '--vdr-handle-background: #fafafa; --vdr-handle-border-color: #eee">' +
         '<div class="host"></div></div>',
     )
-    mountInto(stage.querySelector('.host')!, () =>
+    await mountInto(stage.querySelector('.host')!, () =>
       h(DraggableResizable, { w: 100, h: 50, active: true, handles: ['br'], layout: 'flow' }),
     )
-    await nextTick()
-    const root = stage.querySelector<HTMLElement>('.vdr-container')!
+    const root = rootOf(stage)
     const handle = handleOf(root, 'br')
 
     const canvasText = resolveColour('CanvasText')
@@ -229,61 +211,5 @@ describe('forced colors', () => {
     expect(pixels.at(rect.left - origin.left + 0.5, rect.top - origin.top + 3.5).join(',')).toBe(
       ink,
     )
-  })
-})
-
-/** An active element with only its `tl` handle, themed with the given custom properties. */
-const mountHandle = async (properties: string) => {
-  const host = fixture(`<div style="padding: 40px; ${properties}"><div class="host"></div></div>`)
-  mountInto(host.querySelector('.host')!, () =>
-    h(DraggableResizable, { w: 100, h: 50, active: true, layout: 'flow', handles: ['tl'] }),
-  )
-  await nextTick()
-  const handle = handleOf(host.querySelector<HTMLElement>('.vdr-container')!, 'tl')
-  /**
-   * The pointer target's extent through the handle's centre: the whole pixel positions that hit
-   * the handle (whole pixels, as hit testing rounds fractional points).
-   */
-  const targetSize = () => {
-    const centre = centreOf(handle)
-    const x = Math.round(centre.x)
-    const y = Math.round(centre.y)
-    let width = 0
-    let height = 0
-    for (let d = -30; d <= 30; d++) {
-      if (document.elementFromPoint(x + d, y) === handle) width++
-      if (document.elementFromPoint(x, y + d) === handle) height++
-    }
-    return { width, height }
-  }
-  return { handle, targetSize }
-}
-
-describe('--vdr-handle-hit-size', () => {
-  it('is the drawn handle by default', async () => {
-    const { handle, targetSize } = await mountHandle('')
-    expect(handle.getBoundingClientRect()).toMatchObject({ width: 7, height: 7 })
-    expect(targetSize()).toEqual({ width: 7, height: 7 })
-  })
-
-  it('24px gives a 24 x 24 pointer target around an unchanged handle', async () => {
-    const { handle, targetSize } = await mountHandle('--vdr-handle-hit-size: 24px')
-    expect(handle.getBoundingClientRect()).toMatchObject({ width: 7, height: 7 })
-    expect(getComputedStyle(handle).backgroundColor).toBe('rgb(240, 240, 240)')
-    // Laid out as a 24 x 24 square centred on the handle (whose padding box is 5px wide)…
-    const target = getComputedStyle(handle, '::before')
-    expect([target.width, target.height, target.left, target.top]).toEqual([
-      '24px',
-      '24px',
-      '-9.5px',
-      '-9.5px',
-    ])
-    // …which the pointer hits. The edges fall on half pixels (the handle is centred on the 1px
-    // frame line), so whole-pixel hit testing counts 24 or 25 positions.
-    const { width, height } = targetSize()
-    for (const extent of [width, height]) {
-      expect(extent).toBeGreaterThanOrEqual(24)
-      expect(extent).toBeLessThanOrEqual(25)
-    }
   })
 })

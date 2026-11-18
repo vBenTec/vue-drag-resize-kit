@@ -6,37 +6,19 @@ import { ALL_HANDLES } from '../../core/handles'
 import type { ResizeHandle } from '../../core/types'
 import {
   dragBy,
+  handleOf,
+  mountElement,
   pointer,
   rectOf,
   setInnerSize,
   setMeasuredSize,
   stubResizeObserver,
+  type ElementProps,
 } from '../../test-utils'
-import type { DraggableResizableProps } from '../types'
 import DraggableResizable from './DraggableResizable.vue'
 
-type Props = DraggableResizableProps & {
-  x?: number
-  y?: number
-  w?: number
-  h?: number
-  active?: boolean
-  'onUpdate:w'?: (value: number) => void
-  'onUpdate:h'?: (value: number) => void
-}
-
-/** Mounts a 100x50 element at 100/100 inside a 300x300 parent. */
-const mountElement = (props: Props = {}) => {
-  const wrapper = mount(DraggableResizable, {
-    attachTo: document.body,
-    props: { x: 100, y: 100, w: 100, h: 50, ...props },
-  })
-  setInnerSize(wrapper.element.parentElement!, 300, 300)
-  return wrapper
-}
-
 const handle = (wrapper: ReturnType<typeof mountElement>, name: ResizeHandle) =>
-  wrapper.get(`[data-handle="${name}"]`).element
+  handleOf(wrapper.element, name)
 
 const eventTypes = (calls: unknown[][]) => calls.map(([type]) => String(type)).toSorted()
 
@@ -394,7 +376,7 @@ describe('flow layout', () => {
 })
 
 /** Mounts a flow element without w / h, so both dimensions start natural. */
-const mountNatural = (props: Props = {}) => {
+const mountNatural = (props: ElementProps = {}) => {
   const observers = stubResizeObserver()
   const wrapper = mount(DraggableResizable, {
     attachTo: document.body,
@@ -538,7 +520,7 @@ describe('natural sizing (flow)', () => {
  * Mounts a 100x50 element inside an image-sized wrapper inside a padded 600x400 editor, whose
  * content box is 560x360.
  */
-const mountWithBoundary = (props: Props = {}) => {
+const mountWithBoundary = (props: ElementProps = {}) => {
   const editor = document.createElement('div')
   editor.className = 'editor'
   editor.style.padding = '20px'

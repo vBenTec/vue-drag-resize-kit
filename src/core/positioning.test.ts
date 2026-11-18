@@ -25,7 +25,7 @@ const step = (input: Partial<StepResizeInput>) =>
     start,
     growW: 0,
     growH: 0,
-    side: 'r',
+    handle: 'br',
     options: {},
     parentSize: null,
     ...input,
@@ -351,16 +351,16 @@ describe('resizeRect with symmetric edges', () => {
 })
 
 describe('stepResizeRect', () => {
-  it('moves the right and bottom edges with side r', () => {
+  it('moves the right and bottom edges with br', () => {
     expect(step({ growW: 5 })).toEqual({ ...start, w: 105 })
     expect(step({ growW: -5 })).toEqual({ ...start, w: 95 })
     expect(step({ growH: 5 })).toEqual({ ...start, h: 55 })
   })
 
-  it('moves the left and bottom edges with side l, keeping the right edge in absolute layout', () => {
-    expect(step({ side: 'l', growW: 5 })).toEqual({ ...start, x: 95, w: 105 })
-    expect(step({ side: 'l', growH: 5 })).toEqual({ ...start, h: 55 })
-    expect(step({ side: 'l', growW: 5, anchor: false })).toEqual({ ...start, w: 105 })
+  it('moves the left and bottom edges with bl, keeping the right edge in absolute layout', () => {
+    expect(step({ handle: 'bl', growW: 5 })).toEqual({ ...start, x: 95, w: 105 })
+    expect(step({ handle: 'bl', growH: 5 })).toEqual({ ...start, h: 55 })
+    expect(step({ handle: 'bl', growW: 5, anchor: false })).toEqual({ ...start, w: 105 })
   })
 
   it('applies the constraints', () => {
@@ -371,19 +371,24 @@ describe('stepResizeRect', () => {
     expect(step({ growW: 5, options: { disabledW: true } })).toEqual(start)
   })
 
-  it.each(['l', 'r'] as const)('keeps a locked ratio on side %s, top edge in place', (side) => {
+  it.each(['bl', 'br'] as const)('keeps a locked ratio from %s, top edge in place', (handle) => {
     const options = { lockAspectRatio: true }
-    const x = (w: number) => (side === 'l' ? start.x + start.w - w : start.x)
-    expect(step({ side, growW: 10, options })).toEqual({ x: x(110), y: 50, w: 110, h: 55 })
-    expect(step({ side, growH: 10, options })).toEqual({ x: x(120), y: 50, w: 120, h: 60 })
-    expect(step({ side, growH: -10, options })).toEqual({ x: x(80), y: 50, w: 80, h: 40 })
+    const x = (w: number) => (handle === 'bl' ? start.x + start.w - w : start.x)
+    expect(step({ handle, growW: 10, options })).toEqual({ x: x(110), y: 50, w: 110, h: 55 })
+    expect(step({ handle, growH: 10, options })).toEqual({ x: x(120), y: 50, w: 120, h: 60 })
+    expect(step({ handle, growH: -10, options })).toEqual({ x: x(80), y: 50, w: 80, h: 40 })
   })
 
   it('resizes to the min / max width for infinite steps', () => {
     const options = { minW: 30, maxW: 160, lockAspectRatio: true }
     expect(step({ growW: -Infinity, options })).toEqual({ ...start, w: 30, h: 15 })
     expect(step({ growW: Infinity, options })).toEqual({ ...start, w: 160, h: 80 })
-    expect(step({ side: 'l', growW: Infinity, options })).toEqual({ x: 40, y: 50, w: 160, h: 80 })
+    expect(step({ handle: 'bl', growW: Infinity, options })).toEqual({
+      x: 40,
+      y: 50,
+      w: 160,
+      h: 80,
+    })
     expect(step({ growW: Infinity }).w).toBe(Infinity)
   })
 })

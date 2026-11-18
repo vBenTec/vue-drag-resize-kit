@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { h, nextTick } from 'vue'
+import { h } from 'vue'
 
+import { ALL_HANDLES } from '../../core/handles'
+import { handleOf } from '../../test-utils'
 import {
   centreOf,
   fixture,
-  handleOf,
   mountInto,
+  rootOf,
   screenshotPixels,
   unmountAll,
 } from '../../test-utils/browser'
@@ -16,7 +18,6 @@ afterEach(unmountAll)
 
 const GREEN = '0,255,0'
 const RED = '255,0,0'
-const ALL = ['tl', 'tm', 'tr', 'ml', 'mr', 'bl', 'bm', 'br'] as const
 
 /**
  * An active 100 x 50 element filled with pure green, with a red frame, on a white 10px margin
@@ -27,13 +28,12 @@ const mountStage = async (properties = '', props: DraggableResizableProps = {}) 
     `<div style="display: inline-block; padding: 10px; background: #fff; ` +
       `--vdr-border-color: #f00; ${properties}"><div class="host"></div></div>`,
   )
-  mountInto(stage.querySelector('.host')!, () =>
+  await mountInto(stage.querySelector('.host')!, () =>
     h(DraggableResizable, { layout: 'flow', w: 100, h: 50, active: true, ...props }, () =>
       h('div', { style: 'width: 100%; height: 100%; background: #0f0' }),
     ),
   )
-  await nextTick()
-  return { stage, root: stage.querySelector<HTMLElement>('.vdr-container')! }
+  return { stage, root: rootOf(stage) }
 }
 
 /** Where the centre of the frame line is expected for each handle, relative to the viewport. */
@@ -45,7 +45,7 @@ const frameLineCentre = (root: HTMLElement, outside: number, handle: string) => 
 }
 
 const expectHandlesCentredOn = (root: HTMLElement, outside: number) => {
-  for (const name of ALL) {
+  for (const name of ALL_HANDLES) {
     const centre = centreOf(handleOf(root, name))
     const expected = frameLineCentre(root, outside, name)
     expect(centre.x, name).toBeCloseTo(expected.x, 3)
@@ -174,6 +174,58 @@ describe('handle theming', () => {
       expect(style.boxShadow).toBe('rgb(255, 0, 0) 0px 0px 2px 0px')
     } finally {
       sheet.remove()
+    }
+  })
+})
+
+/**
+ * The pointer target's extent through the centre of `handle`: the whole pixel positions that
+ * hit it (whole pixels, as hit testing rounds fractional points).
+ */
+const targetSize = (handle: HTMLElement) => {
+  const centre = centreOf(handle)
+  const x = Math.round(centre.x)
+  const y = Math.round(centre.y)
+  let width = 0
+  let height = 0
+  for (let d = -30; d <= 30; d++) {
+    if (document.elementFromPoint(x + d, y) === handle) width++
+    if (document.elementFromPoint(x, y + d) === handle) height++
+  }
+  return { width, height }
+}
+
+/** An active element with only its `tl` handle, with room around it for the pointer target. */
+const mountHandle = async (properties: string) => {
+  const { root } = await mountStage(`padding: 40px; ${properties}`, { handles: ['tl'] })
+  return handleOf(root, 'tl')
+}
+
+describe('--vdr-handle-hit-size', () => {
+  it('is the drawn handle by default', async () => {
+    const handle = await mountHandle('')
+    expect(handle.getBoundingClientRect()).toMatchObject({ width: 7, height: 7 })
+    expect(targetSize(handle)).toEqual({ width: 7, height: 7 })
+  })
+
+  it('24px gives a 24 x 24 pointer target around an unchanged handle', async () => {
+    const handle = await mountHandle('--vdr-handle-hit-size: 24px')
+    expect(handle.getBoundingClientRect()).toMatchObject({ width: 7, height: 7 })
+    expect(getComputedStyle(handle).backgroundColor).toBe('rgb(240, 240, 240)')
+    // Laid out as a 24 x 24 square centred on the handle (whose padding box is 5px wide)…
+    const target = getComputedStyle(handle, '::before')
+    expect([target.width, target.height, target.left, target.top]).toEqual([
+      '24px',
+      '24px',
+      '-9.5px',
+      '-9.5px',
+    ])
+    // …which the pointer hits. The edges fall on half pixels (the handle is centred on the 1px
+    // frame line), so whole-pixel hit testing counts 24 or 25 positions.
+    const { width, height } = targetSize(handle)
+    for (const extent of [width, height]) {
+      expect(extent).toBeGreaterThanOrEqual(24)
+      expect(extent).toBeLessThanOrEqual(25)
     }
   })
 })

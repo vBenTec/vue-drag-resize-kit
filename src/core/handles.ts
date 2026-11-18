@@ -11,7 +11,7 @@ export const ALL_HANDLES = [
   'br',
 ] as const satisfies readonly PhysicalResizeHandle[]
 
-export const LOGICAL_HANDLES = [
+const LOGICAL_HANDLES = [
   'ts',
   'te',
   'ms',

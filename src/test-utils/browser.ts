@@ -1,16 +1,17 @@
 import { page } from 'vitest/browser'
-import { createApp, defineComponent, nextTick, type App, type VNode } from 'vue'
+import { createApp, defineComponent, h, nextTick, type App, type VNode } from 'vue'
 
+import DraggableResizable from '../vue/components/DraggableResizable.vue'
 import { pointer } from './index'
 
 let apps: App<Element>[] = []
 
-/** Mounts `render` into `host`; undone by {@link unmountAll}. */
-export const mountInto = (host: Element, render: () => VNode) => {
+/** Mounts `render` into `host` and waits for its mounted effects; undone by {@link unmountAll}. */
+export const mountInto = async (host: Element, render: () => VNode) => {
   const app = createApp(defineComponent({ setup: () => render }))
   apps.push(app)
   app.mount(host)
-  return app
+  await nextTick()
 }
 
 /** Unmounts everything {@link mountInto} mounted and empties the document. */
@@ -29,19 +30,68 @@ export const fixture = <T extends HTMLElement = HTMLElement>(html: string) => {
   return document.body.lastElementChild as T
 }
 
-export const svgImage = (width: number, height: number, fill = '#4f46e5') =>
+/** The mounted element's root, inside `within`. */
+export const rootOf = (within: ParentNode) => within.querySelector<HTMLElement>('.vdr-container')!
+
+export const svgImage = (width: number, height: number) =>
   `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${width}' ` +
-  `height='${height}'><rect width='${width}' height='${height}' fill='${encodeURIComponent(fill)}'/></svg>`
+  `height='${height}'><rect width='${width}' height='${height}' fill='%234f46e5'/></svg>`
 
-export const handleOf = (root: HTMLElement, name: string) =>
-  root.querySelector<HTMLElement>(`[data-handle="${name}"]`)!
+/** The models of a {@link mountControlledImage}. */
+export interface ImageModels {
+  w: number
+  h: number
+  active: boolean
+}
 
-export const handleNames = (root: HTMLElement) =>
-  [...root.querySelectorAll<HTMLElement>('.vdr-handle')].map((handle) => handle.dataset.handle)
+/**
+ * Mounts a flow `DraggableResizable` into `host`, wrapping an image of the given intrinsic size
+ * that fills it. Its `w` / `h` / `active` models are controlled through `models` and echoed back
+ * exactly, like a persisting consumer; `props` are spread last.
+ */
+export const mountControlledImage = (
+  host: Element,
+  models: ImageModels,
+  image: [width: number, height: number],
+  props: Record<string, unknown> = {},
+  imageAttrs: Record<string, unknown> = {},
+) =>
+  mountInto(host, () =>
+    h(
+      DraggableResizable,
+      {
+        layout: 'flow',
+        lockAspectRatio: true,
+        w: models.w,
+        h: models.h,
+        active: models.active,
+        'onUpdate:w': (value: number) => (models.w = value),
+        'onUpdate:h': (value: number) => (models.h = value),
+        'onUpdate:active': (value: boolean) => (models.active = value),
+        ...props,
+      },
+      () =>
+        h('img', {
+          src: svgImage(...image),
+          style: 'display: block; width: 100%; height: 100%',
+          ...imageAttrs,
+        }),
+    ),
+  )
 
 export const centreOf = (element: Element) => {
   const { left, top, width, height } = element.getBoundingClientRect()
   return { x: left + width / 2, y: top + height / 2 }
+}
+
+/** Presses and releases without moving: outside `root` to deactivate it, then on it to activate. */
+export const activate = async (root: HTMLElement) => {
+  pointer(document.body, 'pointerdown', 0, 0)
+  pointer(document, 'pointerup', 0, 0)
+  await nextTick()
+  pointer(root, 'pointerdown', 1, 1)
+  pointer(document, 'pointerup', 1, 1)
+  await nextTick()
 }
 
 /**
@@ -69,11 +119,8 @@ export const dragFromCentre = async (target: Element, moves: [number, number][])
 export const rendered = () =>
   new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
 
-export type Rgb = [r: number, g: number, b: number]
-
 /** The pixels of a screenshot of `element`'s border box, addressed in CSS px relative to it. */
 export const screenshotPixels = async (element: HTMLElement) => {
-  await rendered()
   const base64 = await page.screenshot({ element, save: false })
   const image = new Image()
   image.src = `data:image/png;base64,${base64}`
@@ -87,7 +134,7 @@ export const screenshotPixels = async (element: HTMLElement) => {
   const { data } = context.getImageData(0, 0, image.width, image.height)
   const scale = image.width / element.getBoundingClientRect().width
 
-  const at = (x: number, y: number): Rgb => {
+  const at = (x: number, y: number) => {
     const index = (Math.floor(y * scale) * image.width + Math.floor(x * scale)) * 4
     return [data[index]!, data[index + 1]!, data[index + 2]!]
   }

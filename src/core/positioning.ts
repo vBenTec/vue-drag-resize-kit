@@ -231,28 +231,33 @@ const calculateGrowth = (
     : { growX, growY: growX * aspectRatio }
 }
 
-/** The rect that results from dragging `handle` by the given pointer delta. */
-export const resizeRect = ({
-  handle,
-  start,
-  deltaX,
-  deltaY,
-  options,
-  parentSize,
-  anchor,
-  symmetric,
-}: ResizeInput): Rect => {
+export const isSameRect = (a: Rect, b: Rect) =>
+  a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h
+
+/** What every resize needs: the ratio to keep, the edges `handle` moves and the size limits. */
+const prepareResize = (
+  handle: PhysicalResizeHandle,
+  start: Rect,
+  options: ConstraintOptions,
+  parentSize: Size | null,
+) => {
   const aspectRatio = getLockedAspectRatio(start, options)
   const edges = getResizeEdges(handle, options, aspectRatio !== null)
   const limits = calculateResizeLimits(edges, start, options, parentSize, aspectRatio)
-  const { growX, growY } = calculateGrowth(
-    handle,
-    edges,
-    symmetric ? 2 * deltaX : deltaX,
-    deltaY,
-    aspectRatio,
-  )
+  return { aspectRatio, edges, limits }
+}
 
+type ResizeLimits = ReturnType<typeof calculateResizeLimits>
+
+/** The rect after `edges` grew by `growX` / `growY`, within `limits`. */
+const applyGrowth = (
+  edges: ResizeEdges,
+  start: Rect,
+  growX: number,
+  growY: number,
+  limits: ResizeLimits,
+  anchor: boolean | undefined,
+): Rect => {
   const w = edges.horizontal ? clamp(start.w + growX, limits.minWidth, limits.maxWidth) : start.w
   const h = edges.vertical ? clamp(start.h + growY, limits.minHeight, limits.maxHeight) : start.h
 
@@ -265,6 +270,28 @@ export const resizeRect = ({
   }
 }
 
+/** The rect that results from dragging `handle` by the given pointer delta. */
+export const resizeRect = ({
+  handle,
+  start,
+  deltaX,
+  deltaY,
+  options,
+  parentSize,
+  anchor,
+  symmetric,
+}: ResizeInput): Rect => {
+  const { aspectRatio, edges, limits } = prepareResize(handle, start, options, parentSize)
+  const { growX, growY } = calculateGrowth(
+    handle,
+    edges,
+    symmetric ? 2 * deltaX : deltaX,
+    deltaY,
+    aspectRatio,
+  )
+  return applyGrowth(edges, start, growX, growY, limits, anchor)
+}
+
 export interface StepResizeInput {
   /** Rect before the step. */
   start: Rect
@@ -274,8 +301,8 @@ export interface StepResizeInput {
    */
   growW: number
   growH: number
-  /** Side the width changes on: the inline-end side, `r` in LTR and `l` in RTL. */
-  side: 'l' | 'r'
+  /** The bottom corner whose edges move: `br` grows the width to the right, `bl` to the left. */
+  handle: 'bl' | 'br'
   options: ConstraintOptions
   /** Size of the parent, required for `options.parent`. */
   parentSize: Size | null
@@ -284,29 +311,25 @@ export interface StepResizeInput {
 }
 
 /**
- * The rect after one keyboard resize step: the bottom edge and the `side` edge move, the others
- * stay, under the same constraints as a pointer resize from the matching bottom corner.
+ * The rect after one keyboard resize step: the edges of `handle` move, the others stay, under the
+ * same constraints as a pointer resize from that corner.
  */
 export const stepResizeRect = ({
   start,
   growW,
   growH,
-  side,
+  handle,
   options,
   parentSize,
   anchor,
 }: StepResizeInput): Rect => {
-  // A bottom corner, driven by the horizontal delta: with a locked ratio a height step is turned
-  // into the width step that produces it.
-  const aspectRatio = getLockedAspectRatio(start, options)
-  const widthStep = aspectRatio !== null && growW === 0 ? growH / aspectRatio : growW
-  return resizeRect({
-    handle: side === 'r' ? 'br' : 'bl',
-    start,
-    deltaX: side === 'r' ? widthStep : -widthStep,
-    deltaY: growH,
-    options,
-    parentSize,
-    anchor,
-  })
+  const { aspectRatio, edges, limits } = prepareResize(handle, start, options, parentSize)
+  // With a locked ratio the stepped dimension drives the other.
+  const [growX, growY] =
+    aspectRatio === null
+      ? [growW, growH]
+      : growW !== 0
+        ? [growW, growW * aspectRatio]
+        : [growH / aspectRatio, growH]
+  return applyGrowth(edges, start, growX, growY, limits, anchor)
 }

@@ -14,7 +14,7 @@ export interface UseKeyboardOptions {
   /** Re-reads the direction, before a sequence starts. */
   refreshDirection: () => void
   stepDrag: (deltaX: number, deltaY: number) => void
-  stepResize: (growW: number, growH: number, side: 'l' | 'r') => void
+  stepResize: (growW: number, growH: number, handle: 'bl' | 'br') => void
   endSteps: () => void
 }
 
@@ -61,14 +61,15 @@ export const useKeyboard = ({
       return true
     }
 
+    // The width changes at the inline-end edge: the `be` corner, `br` in LTR and `bl` in RTL.
     const rtl = direction() === 'rtl'
-    const side = rtl ? 'l' : 'r'
-    if (key === 'Home') stepResize(-Infinity, 0, side)
-    else if (key === 'End') stepResize(Infinity, 0, side)
+    const handle = rtl ? 'bl' : 'br'
+    if (key === 'Home') stepResize(-Infinity, 0, handle)
+    else if (key === 'End') stepResize(Infinity, 0, handle)
     else if (!arrow) return false
     // The width grows towards the inline end: rightwards in LTR, leftwards in RTL.
-    else if (arrow[0]) stepResize((rtl ? -arrow[0] : arrow[0]) * amount, 0, side)
-    else stepResize(0, arrow[1] * amount, side)
+    else if (arrow[0]) stepResize((rtl ? -arrow[0] : arrow[0]) * amount, 0, handle)
+    else stepResize(0, arrow[1] * amount, handle)
     return true
   }
 

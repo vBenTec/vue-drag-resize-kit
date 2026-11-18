@@ -2,30 +2,12 @@ import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vitest'
 import { h, nextTick } from 'vue'
 
-import { setInnerSize } from '../../test-utils'
-import type { DraggableResizableProps } from '../types'
+import { mountElement as mountAt, rectOf, type ElementProps } from '../../test-utils'
 import DraggableResizable from './DraggableResizable.vue'
 
-type Props = DraggableResizableProps & {
-  x?: number
-  y?: number
-  w?: number
-  h?: number
-  active?: boolean
-}
-
 /** Mounts a 100x50 element at 100/100 inside a 300x300 parent, with keyboard interaction. */
-const mountElement = (props: Props = {}, hostStyle = '') => {
-  const host = document.createElement('div')
-  host.style.cssText = hostStyle
-  document.body.appendChild(host)
-  const wrapper = mount(DraggableResizable, {
-    attachTo: host,
-    props: { x: 100, y: 100, w: 100, h: 50, keyboard: true, draggable: false, ...props },
-  })
-  setInnerSize(wrapper.element.parentElement!, 300, 300)
-  return wrapper
-}
+const mountElement = (props: ElementProps = {}, hostStyle = '') =>
+  mountAt({ keyboard: true, draggable: false, ...props }, hostStyle)
 
 type Wrapper = ReturnType<typeof mountElement>
 
@@ -43,11 +25,6 @@ const press = async (wrapper: Wrapper, name: string, times = 1, init = {}) => {
     // oxlint-disable-next-line no-await-in-loop -- keys are sequential by nature
     await nextTick()
   }
-}
-
-const size = (wrapper: Wrapper) => {
-  const { width, height } = (wrapper.element as HTMLElement).style
-  return { w: parseFloat(width), h: parseFloat(height) }
 }
 
 const emittedTypes = (wrapper: Wrapper) =>
@@ -73,7 +50,7 @@ describe('without keyboard', () => {
   it('ignores keys', async () => {
     const wrapper = mountElement({ keyboard: undefined, active: true })
     await press(wrapper, 'ArrowRight')
-    expect(size(wrapper)).toEqual({ w: 100, h: 50 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 100, h: 50 })
     expect(emittedTypes(wrapper)).toEqual([])
   })
 })
@@ -120,7 +97,7 @@ describe('keyboard semantics', () => {
     key(wrapper.element, 'keydown', 'ArrowRight')
     key(wrapper.element, 'keydown', 'ArrowRight', { repeat: true })
     await nextTick()
-    expect(size(wrapper)).toEqual({ w: 102, h: 50 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 102, h: 50 })
     expect(description()).toBe('100 × 50')
 
     key(wrapper.element, 'keyup', 'ArrowRight')
@@ -156,7 +133,7 @@ describe('keyboard activation', () => {
   it('leaves arrow keys alone while inactive', async () => {
     const wrapper = mountElement()
     expect(key(wrapper.element, 'keydown', 'ArrowRight').defaultPrevented).toBe(false)
-    expect(size(wrapper)).toEqual({ w: 100, h: 50 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 100, h: 50 })
   })
 })
 
@@ -164,17 +141,17 @@ describe('keyboard resizing', () => {
   it('resizes the right / bottom edges by the step, Shift x 10', async () => {
     const wrapper = mountElement({ active: true })
     await press(wrapper, 'ArrowRight', 3)
-    expect(size(wrapper)).toEqual({ w: 103, h: 50 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 103, h: 50 })
     await press(wrapper, 'ArrowLeft')
     await press(wrapper, 'ArrowDown', 2)
     await press(wrapper, 'ArrowUp')
-    expect(size(wrapper)).toEqual({ w: 102, h: 51 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 102, h: 51 })
     await press(wrapper, 'ArrowRight', 1, { shiftKey: true })
-    expect(size(wrapper)).toEqual({ w: 112, h: 51 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 112, h: 51 })
 
     await wrapper.setProps({ keyboardStep: 5 })
     await press(wrapper, 'ArrowDown', 1, { shiftKey: true })
-    expect(size(wrapper)).toEqual({ w: 112, h: 101 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 112, h: 101 })
     // Resizing never moves the element in LTR.
     expect((wrapper.element as HTMLElement).style.left).toBe('100px')
   })
@@ -194,33 +171,33 @@ describe('keyboard resizing', () => {
     const wrapper = mountElement({ active: true, minW: 99, maxH: 51, parent: true })
     await press(wrapper, 'ArrowLeft', 5)
     await press(wrapper, 'ArrowDown', 5)
-    expect(size(wrapper)).toEqual({ w: 99, h: 51 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 99, h: 51 })
     // The parent is 300 wide and the element starts at x = 100.
     await press(wrapper, 'ArrowRight', 30, { shiftKey: true })
-    expect(size(wrapper)).toEqual({ w: 200, h: 51 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 200, h: 51 })
 
     await wrapper.setProps({ disabledW: true })
     await press(wrapper, 'ArrowLeft')
-    expect(size(wrapper)).toEqual({ w: 200, h: 51 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 200, h: 51 })
   })
 
   it('keeps a locked aspect ratio for either axis', async () => {
     const wrapper = mountElement({ active: true, lockAspectRatio: true })
     await press(wrapper, 'ArrowRight', 10)
-    expect(size(wrapper)).toEqual({ w: 110, h: 55 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 110, h: 55 })
     await press(wrapper, 'ArrowDown', 5)
-    expect(size(wrapper)).toEqual({ w: 120, h: 60 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 120, h: 60 })
   })
 
   it('resizes to the min / max width with Home / End, End only with a cap', async () => {
     const wrapper = mountElement({ active: true, minW: 30, minH: 10, lockAspectRatio: true })
     await press(wrapper, 'Home')
-    expect(size(wrapper)).toEqual({ w: 30, h: 15 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 30, h: 15 })
     await press(wrapper, 'End')
-    expect(size(wrapper)).toEqual({ w: 30, h: 15 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 30, h: 15 })
     await wrapper.setProps({ maxW: 140 })
     await press(wrapper, 'End')
-    expect(size(wrapper)).toEqual({ w: 140, h: 70 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 140, h: 70 })
   })
 
   it('emits one resize-start and one resize-end per key sequence, never per repeat', async () => {
@@ -287,7 +264,7 @@ describe('keyboard resizing', () => {
       new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, button: 0, clientX: 0 }),
     )
     await press(wrapper, 'ArrowRight')
-    expect(size(wrapper)).toEqual({ w: 100, h: 50 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 100, h: 50 })
     document.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1 }))
   })
 })
@@ -302,7 +279,7 @@ describe('keyboard moving', () => {
     expect(wrapper.emitted('drag-start')).toHaveLength(3)
     expect(wrapper.emitted('drag-end')!.at(1)).toEqual([{ x: 98, y: 100 }])
     expect(wrapper.emitted('drag-end')!.at(-1)).toEqual([{ x: 98, y: 110 }])
-    expect(size(wrapper)).toEqual({ w: 100, h: 50 })
+    expect(rectOf(wrapper.element)).toMatchObject({ w: 100, h: 50 })
     expect(wrapper.emitted('resize-start')).toBeUndefined()
   })
 

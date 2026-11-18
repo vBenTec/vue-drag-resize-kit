@@ -1,4 +1,4 @@
-import { computed, onMounted, shallowRef, watch, type ShallowRef } from 'vue'
+import { onMounted, shallowRef, watch, type ShallowRef } from 'vue'
 
 import { getAnchoredEdge, type FlowAnchor } from '../../core/direction'
 import type { Direction } from '../../core/types'
@@ -9,14 +9,14 @@ export interface UseDirectionOptions {
   flowAnchor: () => FlowAnchor
 }
 
-const readDirection = (el: Element): Direction =>
-  getComputedStyle(el).direction === 'rtl' ? 'rtl' : 'ltr'
+const toDirection = (style: CSSStyleDeclaration): Direction =>
+  style.direction === 'rtl' ? 'rtl' : 'ltr'
 
-/** The nearest ancestor that lays out lines (its `text-align` places them), if any. */
-const findBlockAncestor = (el: Element): Element | null => {
+/** The computed style of the nearest ancestor that lays out lines (its `text-align` places them). */
+const blockAncestorStyle = (el: Element): CSSStyleDeclaration | null => {
   for (let node = el.parentElement; node; node = node.parentElement) {
-    const { display } = getComputedStyle(node)
-    if (display !== 'inline' && display !== 'contents') return node
+    const style = getComputedStyle(node)
+    if (style.display !== 'inline' && style.display !== 'contents') return style
   }
   return null
 }
@@ -30,26 +30,19 @@ const findBlockAncestor = (el: Element): Element | null => {
  */
 export const useDirection = ({ root, flowAnchor }: UseDirectionOptions) => {
   const direction = shallowRef<Direction>('ltr')
-  // Where `text-align` is resolved: the block container's direction and alignment.
-  const blockDirection = shallowRef<Direction>('ltr')
-  const textAlign = shallowRef('start')
+  const anchoredEdge = shallowRef(getAnchoredEdge(flowAnchor(), 'ltr'))
 
   const refresh = () => {
     const el = root.value
     if (!el) return
-    direction.value = readDirection(el)
-    if (flowAnchor() !== 'auto') return
-    const block = findBlockAncestor(el)
-    blockDirection.value = block ? readDirection(block) : direction.value
-    textAlign.value = block ? getComputedStyle(block).textAlign : 'start'
-  }
-
-  const anchoredEdge = computed(() => {
+    direction.value = toDirection(getComputedStyle(el))
+    // `text-align` is resolved where the lines are laid out: in the block container.
     const anchor = flowAnchor()
-    return anchor === 'auto'
-      ? getAnchoredEdge(anchor, blockDirection.value, textAlign.value)
+    const block = anchor === 'auto' ? blockAncestorStyle(el) : null
+    anchoredEdge.value = block
+      ? getAnchoredEdge(anchor, toDirection(block), block.textAlign)
       : getAnchoredEdge(anchor, direction.value)
-  })
+  }
 
   onMounted(refresh)
   watch(flowAnchor, refresh)

@@ -1,45 +1,28 @@
-import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 
-import { pointer, setInnerSize } from '../../test-utils'
-import type { DraggableResizableProps } from '../types'
-import DraggableResizable from './DraggableResizable.vue'
+import {
+  dragBy,
+  handleNames,
+  handleOf,
+  mountElement,
+  pointer,
+  type ElementProps,
+} from '../../test-utils'
 
-type Props = DraggableResizableProps & {
-  x?: number
-  y?: number
-  w?: number
-  h?: number
-  active?: boolean
+type Wrapper = ReturnType<typeof mountElement>
+
+/** Mounts a 100x50 element into a host with the given styles; `host` is its parent, for changes. */
+const mountIn = (hostStyle: string, props: ElementProps = {}) => {
+  const wrapper = mountElement(props, hostStyle)
+  return { host: wrapper.element.parentElement!, wrapper }
 }
 
-/**
- * Mounts a 100x50 element into a host with the given styles (happy-dom inherits `direction` from
- * styles, not from the `dir` attribute; Chromium covers that).
- */
-const mountIn = (hostStyle: string, props: Props = {}) => {
-  const host = document.createElement('div')
-  host.style.cssText = hostStyle
-  document.body.appendChild(host)
-  const wrapper = mount(DraggableResizable, {
-    attachTo: host,
-    props: { x: 100, y: 100, w: 100, h: 50, ...props },
-  })
-  setInnerSize(wrapper.element.parentElement!, 300, 300)
-  return { host, wrapper }
-}
-
-const renderedHandles = (wrapper: ReturnType<typeof mount>) =>
-  wrapper.findAll('.vdr-handle').map((node) => node.attributes('data-handle'))
+const renderedHandles = (wrapper: Wrapper) => handleNames(wrapper.element)
 
 /** Drags `handle` horizontally by `deltaX`. */
-const resizeBy = async (wrapper: ReturnType<typeof mount>, handle: string, deltaX: number) => {
-  pointer(wrapper.get(`[data-handle="${handle}"]`).element, 'pointerdown', 100, 100)
-  pointer(document, 'pointermove', 100 + deltaX, 100)
-  pointer(document, 'pointerup', 100 + deltaX, 100)
-  await nextTick()
-}
+const resizeBy = (wrapper: Wrapper, handle: string, deltaX: number) =>
+  dragBy(handleOf(wrapper.element, handle), deltaX, 0)
 
 afterEach(() => {
   document.body.innerHTML = ''
