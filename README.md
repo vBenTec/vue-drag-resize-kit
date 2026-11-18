@@ -36,6 +36,8 @@ Originally forked from `vue3-draggable-resizable` and rewritten from scratch. Sw
   - [Props](#props)
   - [Models](#models)
   - [Events](#events)
+  - [Slots](#slots)
+  - [Toolbar](#toolbar) (`#toolbar` slot, `resizeTo`, `ignoreOutside`)
 - [Inline images / document flow](#inline-images--document-flow) (`layout="flow"`, `boundary`)
   - [Right-to-left text](#right-to-left-text) (logical handles, `flowAnchor`)
 - [DraggableContainer](#draggablecontainer) (snapping)
@@ -105,38 +107,41 @@ non-static position). Import the stylesheet once, anywhere in your app.
 
 ### Props
 
-| Prop                  | Type                      | Default         | Description                                                                                              |
-| --------------------- | ------------------------- | --------------- | -------------------------------------------------------------------------------------------------------- |
-| `initW`               | `number`                  | `0`             | Initial width in px, used while `w` is not set.                                                          |
-| `initH`               | `number`                  | `0`             | Initial height in px, used while `h` is not set.                                                         |
-| `layout`              | `'absolute' \| 'flow'`    | `'absolute'`    | How the element is positioned. See [Inline images / document flow](#inline-images--document-flow).       |
-| `draggable`           | `boolean`                 | `true`          | Whether the element can be dragged. Ignored with `layout="flow"`.                                        |
-| `resizable`           | `boolean`                 | `true`          | Whether the element can be resized.                                                                      |
-| `parent`              | `boolean`                 | `false`         | Restrict movement and size to the parent element. Ignored with `layout="flow"`.                          |
-| `boundary`            | `BoundaryTarget`          | —               | Cap the size at another element's content box. See [the `boundary` prop](#the-boundary-prop).            |
-| `minW`                | `number`                  | `20`            | Minimum width in px.                                                                                     |
-| `minH`                | `number`                  | `20`            | Minimum height in px.                                                                                    |
-| `maxW`                | `number`                  | —               | Maximum width in px.                                                                                     |
-| `maxH`                | `number`                  | —               | Maximum height in px.                                                                                    |
-| `disabledX`           | `boolean`                 | `false`         | Lock movement on the x-axis.                                                                             |
-| `disabledY`           | `boolean`                 | `false`         | Lock movement on the y-axis.                                                                             |
-| `disabledW`           | `boolean`                 | `false`         | Lock the width.                                                                                          |
-| `disabledH`           | `boolean`                 | `false`         | Lock the height.                                                                                         |
-| `lockAspectRatio`     | `boolean`                 | `false`         | Keep the aspect ratio while resizing; the default handles become the four corners.                       |
-| `handles`             | `readonly ResizeHandle[]` | see below       | Handles to render: `tl` … `br`, or logical `ts` … `be` (below). Unknown / duplicate entries are ignored. |
-| `flowAnchor`          | `FlowAnchor`              | `'none'`        | Flow layout: the edge that stays put. See [Right-to-left text](#right-to-left-text).                     |
-| `hideAnchoredHandles` | `boolean`                 | `false`         | With a resolved `flowAnchor`: don't render the handles on the anchored edge.                             |
-| `keyboard`            | `boolean`                 | `false`         | Keyboard interaction and ARIA semantics. See [Accessibility](#accessibility).                            |
-| `keyboardStep`        | `number`                  | `1`             | Distance of one arrow-key step in px; `Shift` multiplies it by 10.                                       |
-| `keyboardMode`        | `'move' \| 'resize'`      | see description | What the arrow keys do: `move` for a draggable element in absolute layout, `resize` otherwise.           |
-| `ariaRoleDescription` | `string`                  | `'resizable'`   | With `keyboard`: the element's `aria-roledescription`. Pass a translation.                               |
-| `ariaSizeText`        | `(w, h) => string`        | `'200 × 100'`   | With `keyboard`: the size text for assistive technology (rounded `w × h` by default).                    |
-| `classNameDraggable`  | `string`                  | `vdr-draggable` | Extra class while `draggable` is on.                                                                     |
-| `classNameResizable`  | `string`                  | `vdr-resizable` | Extra class while `resizable` is on.                                                                     |
-| `classNameDragging`   | `string`                  | `vdr-dragging`  | Extra class while dragging.                                                                              |
-| `classNameResizing`   | `string`                  | `vdr-resizing`  | Extra class while resizing.                                                                              |
-| `classNameActive`     | `string`                  | `vdr-active`    | Extra class while active.                                                                                |
-| `classNameHandle`     | `string`                  | `vdr-handle`    | Extra class on every handle, also applied as `<class>-<handle>`.                                         |
+| Prop                  | Type                           | Default         | Description                                                                                              |
+| --------------------- | ------------------------------ | --------------- | -------------------------------------------------------------------------------------------------------- |
+| `initW`               | `number`                       | `0`             | Initial width in px, used while `w` is not set.                                                          |
+| `initH`               | `number`                       | `0`             | Initial height in px, used while `h` is not set.                                                         |
+| `layout`              | `'absolute' \| 'flow'`         | `'absolute'`    | How the element is positioned. See [Inline images / document flow](#inline-images--document-flow).       |
+| `draggable`           | `boolean`                      | `true`          | Whether the element can be dragged. Ignored with `layout="flow"`.                                        |
+| `resizable`           | `boolean`                      | `true`          | Whether the element can be resized.                                                                      |
+| `parent`              | `boolean`                      | `false`         | Restrict movement and size to the parent element. Ignored with `layout="flow"`.                          |
+| `boundary`            | `BoundaryTarget`               | —               | Cap the size at another element's content box. See [the `boundary` prop](#the-boundary-prop).            |
+| `minW`                | `number`                       | `20`            | Minimum width in px.                                                                                     |
+| `minH`                | `number`                       | `20`            | Minimum height in px.                                                                                    |
+| `maxW`                | `number`                       | —               | Maximum width in px.                                                                                     |
+| `maxH`                | `number`                       | —               | Maximum height in px.                                                                                    |
+| `disabledX`           | `boolean`                      | `false`         | Lock movement on the x-axis.                                                                             |
+| `disabledY`           | `boolean`                      | `false`         | Lock movement on the y-axis.                                                                             |
+| `disabledW`           | `boolean`                      | `false`         | Lock the width.                                                                                          |
+| `disabledH`           | `boolean`                      | `false`         | Lock the height.                                                                                         |
+| `lockAspectRatio`     | `boolean`                      | `false`         | Keep the aspect ratio while resizing; the default handles become the four corners.                       |
+| `handles`             | `readonly ResizeHandle[]`      | see below       | Handles to render: `tl` … `br`, or logical `ts` … `be` (below). Unknown / duplicate entries are ignored. |
+| `flowAnchor`          | `FlowAnchor`                   | `'none'`        | Flow layout: the edge that stays put. See [Right-to-left text](#right-to-left-text).                     |
+| `hideAnchoredHandles` | `boolean`                      | `false`         | With a resolved `flowAnchor`: don't render the handles on the anchored edge.                             |
+| `keyboard`            | `boolean`                      | `false`         | Keyboard interaction and ARIA semantics. See [Accessibility](#accessibility).                            |
+| `keyboardStep`        | `number`                       | `1`             | Distance of one arrow-key step in px; `Shift` multiplies it by 10.                                       |
+| `keyboardMode`        | `'move' \| 'resize'`           | see description | What the arrow keys do: `move` for a draggable element in absolute layout, `resize` otherwise.           |
+| `ariaRoleDescription` | `string`                       | `'resizable'`   | With `keyboard`: the element's `aria-roledescription`. Pass a translation.                               |
+| `ariaSizeText`        | `(w, h) => string`             | `'200 × 100'`   | With `keyboard`: the size text for assistive technology (rounded `w × h` by default).                    |
+| `toolbarLabel`        | `string`                       | —               | Accessible name of the [toolbar](#toolbar). Pass a translation.                                          |
+| `toolbarPlacement`    | `'bottom' \| 'top' \| 'auto'`  | `'bottom'`      | Side of the [toolbar](#toolbar); `auto` flips it above for lack of room.                                 |
+| `ignoreOutside`       | `(target: Element) => boolean` | —               | Presses outside the element that must not deactivate it. See [Toolbar](#toolbar).                        |
+| `classNameDraggable`  | `string`                       | `vdr-draggable` | Extra class while `draggable` is on.                                                                     |
+| `classNameResizable`  | `string`                       | `vdr-resizable` | Extra class while `resizable` is on.                                                                     |
+| `classNameDragging`   | `string`                       | `vdr-dragging`  | Extra class while dragging.                                                                              |
+| `classNameResizing`   | `string`                       | `vdr-resizing`  | Extra class while resizing.                                                                              |
+| `classNameActive`     | `string`                       | `vdr-active`    | Extra class while active.                                                                                |
+| `classNameHandle`     | `string`                       | `vdr-handle`    | Extra class on every handle, also applied as `<class>-<handle>`.                                         |
 
 All props are reactive.
 
@@ -178,9 +183,9 @@ Every model is optional. Without `v-model` the component keeps the value itself,
 moved.
 
 An element becomes active when it is pressed, and inactive when the pointer goes down anywhere
-outside it. Handles are only shown while it is active. To keep an element active while the user
-interacts with something else (a toolbar, say), stop the event there:
-`<div @pointerdown.stop>`.
+outside it. Handles are only shown while it is active. Controls that belong to the element go
+into its [`#toolbar` slot](#toolbar), which counts as inside; for anything else that must not
+deactivate it (teleported popovers, say), pass [`ignoreOutside`](#teleported-content).
 
 ### Events
 
@@ -204,6 +209,9 @@ With [`keyboard`](#accessibility), a key sequence is one gesture: the first arro
 anything emits `*-start`, every step `dragging` / `resizing`, and releasing the last held key (or
 losing focus) `*-end` — never one pair per key repeat.
 
+A [`resizeTo`](#resizeto) call is one gesture too, ended at once: `resize-start`, one `resizing`
+and `resize-end` — or nothing, if it changes nothing.
+
 ```ts
 type DragPayload = { x: number; y: number }
 type ResizePayload = { x: number; y: number; w: number; h: number }
@@ -211,7 +219,145 @@ type ResizePayload = { x: number; y: number; w: number; h: number }
 
 ### Slots
 
-The default slot is the element's content.
+| Slot      | Scoped props                                | Content                                               |
+| --------- | ------------------------------------------- | ----------------------------------------------------- |
+| `default` | —                                           | The element's content.                                |
+| `toolbar` | `rect`, `gesture`, `resizeTo`, `deactivate` | Controls shown while active. See [Toolbar](#toolbar). |
+
+### Toolbar
+
+Controls that act on the element — preset sizes, "remove", an alt-text field — go into the
+`toolbar` slot. It renders inside the element, below it, for as long as the element is active:
+
+```vue
+<DraggableResizable
+  layout="flow"
+  boundary=".editor"
+  lock-aspect-ratio
+  keyboard
+  :toolbar-label="t('Image size')"
+  v-model:w="w"
+  v-model:h="h"
+  @resize-end="save"
+>
+  <img src="photo.jpg" alt="…" style="display: block; width: 100%; height: 100%" />
+  <template #toolbar="{ resizeTo, deactivate }">
+    <button @click="resizeTo({ w: 160 })">Small</button>
+    <button @click="resizeTo({ w: Infinity })">Best fit</button>
+    <button @click="deactivate">Done</button>
+  </template>
+</DraggableResizable>
+```
+
+For an "original size" button, pass the image's `naturalWidth`. No `@pointerdown.stop` and no positioning code: the toolbar is part of the element for outside
+presses and for focus (`root.contains(document.activeElement)` holds), but not for gestures,
+keyboard resizing or measuring.
+
+| Slot prop    | Type                           | Description                                       |
+| ------------ | ------------------------------ | ------------------------------------------------- |
+| `rect`       | `Rect`                         | The current rect, live during a gesture.          |
+| `gesture`    | `'drag' \| 'resize' \| null`   | The running gesture.                              |
+| `resizeTo`   | `(size: ResizeToSize) => void` | Resizes the element; see [`resizeTo`](#resizeto). |
+| `deactivate` | `() => void`                   | Sets `active` to `false`.                         |
+
+**Rendering.** With the slot, the element renders
+`<div class="vdr-toolbar" role="toolbar" data-placement="bottom">` after its content and before
+the handles, named by `toolbarLabel` (`aria-label`; there is no default, pass a translation). The
+wrapper exists whenever the slot is passed — also if its content renders nothing — and is hidden
+with `display: none` while the element is inactive, so state inside it (a half-typed alt text)
+survives deactivation. It stays visible during a gesture; hide it there with the `gesture` slot
+prop or `.vdr-container[data-resizing] > .vdr-toolbar { visibility: hidden }` if you prefer.
+
+**Events.** A press in the toolbar starts no drag, and a click there does not activate the
+element, so a button calling `deactivate()` leaves it inactive. The events are not stopped: they
+still reach `document` (other elements and other libraries' outside-click handlers keep working)
+and **your own listeners on the element** — a `@mousedown.prevent` or `@keydown.enter` on
+`<DraggableResizable>` also fires for the toolbar's buttons and inputs; check `event.target`
+there.
+
+**Keyboard and focus.** Every item stays a Tab stop, in DOM order after the element itself; the
+library never writes attributes on your items.
+
+| Key                        | In the toolbar                                                     |
+| -------------------------- | ------------------------------------------------------------------ |
+| `ArrowRight` / `ArrowLeft` | Focus the next / previous item, wrapping around (mirrored in RTL). |
+| `Home` / `End`             | Focus the first / last item.                                       |
+| `Escape`                   | With `keyboard`: focus the element, which stays active.            |
+
+The arrow keys, `Home` and `End` are left alone in text fields (`input`, `textarea`, `select`,
+contenteditable) and with `Alt`, `Ctrl` or `Meta`. Call `event.preventDefault()` in your own
+`keydown` handler to opt out of any of these keys — an alt-text input that cancels itself on
+`Escape`, for instance. Keys typed in the toolbar never move or resize the element.
+
+When the element is deactivated while focus is in the toolbar (`deactivate()`, or
+`v-model:active` set to `false`), focus moves to the element, which stays inactive — `Enter`
+activates it again. This needs `keyboard`; without it the element is not focusable and focus is
+left where it was, on a now hidden item. Tabbing out of the toolbar does not deactivate the
+element: it stays active until a press outside or `Escape` on the element.
+
+**Placement.** `toolbar-placement` is `bottom` (default), `top` or `auto`; the side in use is
+exposed as `data-placement="bottom"` / `"top"` on the wrapper. The toolbar is aligned with the
+inline-start edge and keeps `--vdr-toolbar-offset` (`4px`) clear of the handles, following the
+frame's [custom properties](#styling). It is as wide as its content, so one that is wider than
+the room towards the inline end overflows there.
+
+`auto` places it below, unless the room below is smaller than the toolbar and there is more room
+above. Room is measured in the viewport and in the nearest ancestor whose `overflow` is not
+`visible` — not in the `boundary`, which only caps the size. It is a snapshot, taken when the
+element is activated, when a gesture ends (including `resizeTo`) and when the prop changes; not
+while scrolling or when the toolbar's own size changes.
+
+The toolbar is positioned with CSS inside the element, not in the top layer: an ancestor with
+`overflow: hidden` clips it when there is no room on either side.
+
+The default look is deliberately plain (`Canvas` background, a `1px` border, `4px` padding,
+`z-index: 1`), all at zero specificity: style `.vdr-toolbar` like any other element.
+
+#### `resizeTo`
+
+```ts
+type ResizeToSize = { w: number; h?: number } | { w?: number; h: number }
+```
+
+`resizeTo(size)` resizes the element under the same constraints as a gesture: `minW` / `maxW` /
+`minH` / `maxH`, `boundary`, `parent`, `disabledW` / `disabledH` and `lockAspectRatio`. With the
+aspect lock the other dimension follows, and `w` wins if both are given. `Infinity` is the
+maximum allowed size (nothing happens without a finite one), `-Infinity` or `0` the minimum;
+`NaN` is ignored. Like keyboard resizing, the inline-end and bottom edges move; in flow layout
+the element never moves.
+
+It emits `resize-start`, `resizing` and `resize-end` once each and writes the models, so presets
+are persisted by the same `@resize-end` handler as a drag of a handle. A call that changes
+nothing emits nothing. It is ignored during a gesture (pointer or key sequence) and while the
+element is not `resizable`.
+
+It is also exposed on the component instance, for controls outside the slot:
+
+```vue
+<script setup lang="ts">
+import { useTemplateRef } from 'vue'
+import { DraggableResizable } from 'vue-drag-resize-kit'
+
+const element = useTemplateRef('element')
+</script>
+
+<template>
+  <DraggableResizable ref="element" lock-aspect-ratio />
+  <button @click="element?.resizeTo({ w: 320 })">Medium</button>
+</template>
+```
+
+#### Teleported content
+
+A select or popover opened from the toolbar is usually teleported to `<body>`, so a press in it
+is a press outside the element and deactivates it. `ignoreOutside` is asked about the target of
+every press outside the element; return `true` to stay active:
+
+```vue
+<DraggableResizable :ignore-outside="(target) => !!target.closest('[data-popover]')" />
+```
+
+It works without the toolbar slot too, e.g. for a popover opened from the default slot.
 
 ## Inline images / document flow
 
@@ -424,18 +570,19 @@ offset in the nearest positioned ancestor, in whole pixels), not at their ignore
 
 The stylesheet is small and unscoped. Everything is prefixed with `vdr-`:
 
-| Selector                              | Element                                     |
-| ------------------------------------- | ------------------------------------------- |
-| `.vdr-container`                      | The draggable element.                      |
-| `.vdr-container[data-active]`         | … while active.                             |
-| `.vdr-container[data-dragging]`       | … while dragging.                           |
-| `.vdr-container[data-resizing]`       | … while resizing (the value is the handle). |
-| `.vdr-container[data-layout='flow']`  | … with `layout="flow"`.                     |
-| `.vdr-container[data-keyboard]`       | … with `keyboard` on.                       |
-| `.vdr-handle`, `.vdr-handle-<handle>` | A resize handle (always the physical name). |
-| `.vdr-sr-only`                        | The visually hidden size text (`keyboard`). |
-| `.vdr-snap-container`                 | The `DraggableContainer` root.              |
-| `.vdr-guide`, `.vdr-guide-x`, `-y`    | A guide (`-x` vertical, `-y` horizontal).   |
+| Selector                              | Element                                                        |
+| ------------------------------------- | -------------------------------------------------------------- |
+| `.vdr-container`                      | The draggable element.                                         |
+| `.vdr-container[data-active]`         | … while active.                                                |
+| `.vdr-container[data-dragging]`       | … while dragging.                                              |
+| `.vdr-container[data-resizing]`       | … while resizing (the value is the handle).                    |
+| `.vdr-container[data-layout='flow']`  | … with `layout="flow"`.                                        |
+| `.vdr-container[data-keyboard]`       | … with `keyboard` on.                                          |
+| `.vdr-handle`, `.vdr-handle-<handle>` | A resize handle (always the physical name).                    |
+| `.vdr-toolbar`                        | The [toolbar](#toolbar) wrapper; `data-placement` is its side. |
+| `.vdr-sr-only`                        | The visually hidden size text (`keyboard`).                    |
+| `.vdr-snap-container`                 | The `DraggableContainer` root.                                 |
+| `.vdr-guide`, `.vdr-guide-x`, `-y`    | A guide (`-x` vertical, `-y` horizontal).                      |
 
 The selection frame is drawn as an `outline` (dashed while active, solid while dragging), not a
 border: it never contributes to the box model, so `w` / `h` always equal the element's true
@@ -456,6 +603,7 @@ Theme it with CSS custom properties, set on the element or any ancestor:
 | `--vdr-handle-radius`       | `0`                       | Handle `border-radius`.                                                      |
 | `--vdr-handle-shadow`       | `none`                    | Handle `box-shadow`, e.g. a soft ring.                                       |
 | `--vdr-handle-hit-size`     | `--vdr-handle-size`       | Pointer target size; larger than the handle adds a transparent margin.       |
+| `--vdr-toolbar-offset`      | `4px`                     | Gap between the handles' outer edge and the [toolbar](#toolbar).             |
 | `--vdr-guide-color`         | `#f00`                    | Snapping guides.                                                             |
 
 ```css
@@ -556,37 +704,29 @@ and are never focusable. Without `keyboard`, nothing but the handles' `aria-hidd
 drawn.
 
 **Dragging movements (WCAG 2.5.7).** Resizing with the handles is a dragging movement, and the
-keyboard is not a single-pointer alternative. Offer one in your UI — for example preset sizes,
-written to `v-model:w` / `v-model:h`:
+keyboard is not a single-pointer alternative. Offer one in your UI — for example preset sizes in
+the [`#toolbar` slot](#toolbar):
 
 ```vue
-<script setup lang="ts">
-import { ref } from 'vue'
-import { DraggableResizable } from 'vue-drag-resize-kit'
-
-const w = ref(0)
-const h = ref(0)
-// Scales the height along, like `lock-aspect-ratio` does.
-const resizeTo = (width: number) => {
-  h.value = (h.value * width) / w.value
-  w.value = width
-}
-</script>
-
-<template>
-  <DraggableResizable layout="flow" lock-aspect-ratio keyboard v-model:w="w" v-model:h="h">
-    <img src="photo.jpg" alt="…" style="display: block; width: 100%; height: 100%" />
-  </DraggableResizable>
-  <div role="toolbar" aria-label="Image size" @pointerdown.stop>
-    <button @click="resizeTo(160)">Small</button>
-    <button @click="resizeTo(320)">Medium</button>
-    <button @click="resizeTo(640)">Large</button>
-  </div>
-</template>
+<DraggableResizable
+  layout="flow"
+  lock-aspect-ratio
+  keyboard
+  toolbar-label="Image size"
+  v-model:w="w"
+  v-model:h="h"
+>
+  <img src="photo.jpg" alt="…" style="display: block; width: 100%; height: 100%" />
+  <template #toolbar="{ resizeTo }">
+    <button @click="resizeTo({ w: 160 })">Small</button>
+    <button @click="resizeTo({ w: 320 })">Medium</button>
+    <button @click="resizeTo({ w: 640 })">Large</button>
+  </template>
+</DraggableResizable>
 ```
 
-`@pointerdown.stop` keeps the element active while the toolbar is used. Writes to the models do
-not emit resize events: persist there as well, or from a `watch`.
+[`resizeTo`](#resizeto) applies the same constraints as a gesture and emits the resize events, so
+the presets keep the aspect ratio and are saved by your `@resize-end` handler.
 
 ## TypeScript
 
@@ -600,6 +740,9 @@ import type {
   DraggableResizableEmits,
   DragPayload, // { x, y }
   ResizePayload, // { x, y, w, h }
+  ResizeToSize, // { w, h? } | { w?, h }
+  ToolbarSlotProps, // { rect, gesture, resizeTo, deactivate }
+  ToolbarPlacement, // 'bottom' | 'top' | 'auto'
   Rect, // { x, y, w, h }
   ResizeHandle, // PhysicalResizeHandle | LogicalResizeHandle
   PhysicalResizeHandle, // 'tl' | 'tm' | 'tr' | 'ml' | 'mr' | 'bl' | 'bm' | 'br'

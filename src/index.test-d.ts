@@ -17,6 +17,9 @@ import {
   type Rect,
   type ResizeHandle,
   type ResizePayload,
+  type ResizeToSize,
+  type ToolbarPlacement,
+  type ToolbarSlotProps,
 } from './index'
 
 type Props = InstanceType<typeof DraggableResizable>['$props']
@@ -60,6 +63,12 @@ describe('DraggableResizable', () => {
     expectTypeOf<Props['ariaRoleDescription']>().toEqualTypeOf<string | undefined>()
     expectTypeOf<Props['ariaSizeText']>().toEqualTypeOf<
       ((w: number, h: number) => string) | undefined
+    >()
+    expectTypeOf<Props['toolbarLabel']>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<Props['toolbarPlacement']>().toEqualTypeOf<ToolbarPlacement | undefined>()
+    expectTypeOf<ToolbarPlacement>().toEqualTypeOf<'bottom' | 'top' | 'auto'>()
+    expectTypeOf<Props['ignoreOutside']>().toEqualTypeOf<
+      ((target: Element) => boolean) | undefined
     >()
     expectTypeOf<Props>().toExtend<DraggableResizableProps>()
   })
@@ -105,12 +114,32 @@ describe('DraggableResizable', () => {
     expectTypeOf<DraggableResizableEmits['resize-end']>().toEqualTypeOf<[payload: ResizePayload]>()
   })
 
+  it('types the toolbar slot and the exposed resizeTo', () => {
+    type Instance = InstanceType<typeof DraggableResizable>
+    expectTypeOf<Parameters<NonNullable<Instance['$slots']['toolbar']>>>().toEqualTypeOf<
+      [props: ToolbarSlotProps]
+    >()
+    expectTypeOf<ToolbarSlotProps['rect']>().toEqualTypeOf<Rect>()
+    expectTypeOf<ToolbarSlotProps['gesture']>().toEqualTypeOf<'drag' | 'resize' | null>()
+    expectTypeOf<ToolbarSlotProps['deactivate']>().toEqualTypeOf<() => void>()
+    expectTypeOf<ToolbarSlotProps['resizeTo']>().toEqualTypeOf<(size: ResizeToSize) => void>()
+    expectTypeOf<Instance['resizeTo']>().toEqualTypeOf<(size: ResizeToSize) => void>()
+
+    expectTypeOf<{ w: number }>().toExtend<ResizeToSize>()
+    expectTypeOf<{ h: number }>().toExtend<ResizeToSize>()
+    expectTypeOf<{ w: number; h: number }>().toExtend<ResizeToSize>()
+    expectTypeOf<{}>().not.toExtend<ResizeToSize>()
+    expectTypeOf<{ w: string }>().not.toExtend<ResizeToSize>()
+  })
+
   it('rejects wrong prop types', () => {
     expectTypeOf<{ handles: ['tl', ''] }>().not.toExtend<Props>()
     expectTypeOf<{ handles: string[] }>().not.toExtend<Props>()
     expectTypeOf<{ handles: ['te', 'me', 'be'] }>().toExtend<Props>()
     expectTypeOf<{ flowAnchor: 'left' }>().not.toExtend<Props>()
     expectTypeOf<{ keyboardMode: 'scale' }>().not.toExtend<Props>()
+    expectTypeOf<{ toolbarPlacement: 'left' }>().not.toExtend<Props>()
+    expectTypeOf<{ ignoreOutside: true }>().not.toExtend<Props>()
     expectTypeOf<{ parent: 'yes' }>().not.toExtend<Props>()
     expectTypeOf<{ layout: 'inline' }>().not.toExtend<Props>()
     expectTypeOf<{ boundary: 42 }>().not.toExtend<Props>()

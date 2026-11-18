@@ -22,6 +22,31 @@ export type LayoutMode = 'absolute' | 'flow'
 /** What the arrow keys do with `keyboard` on: move the element, or resize it. */
 export type KeyboardMode = 'move' | 'resize'
 
+/** Where the toolbar sits: below or above the element, or `auto` to flip above for lack of room. */
+export type ToolbarPlacement = 'bottom' | 'top' | 'auto'
+
+/**
+ * The size `resizeTo` resizes to (px), at least one dimension. `Infinity` is the maximum allowed
+ * size, `-Infinity` or `0` the minimum; `NaN` is ignored.
+ */
+export type ResizeToSize = { w: number; h?: number } | { w?: number; h: number }
+
+/** Scoped props of the `toolbar` slot. */
+export interface ToolbarSlotProps {
+  /** The current rect (models), live during a gesture. */
+  rect: Rect
+  /** The running gesture, or `null`. */
+  gesture: 'drag' | 'resize' | null
+  /**
+   * Resizes the element under the same constraints as a gesture, emitting `resize-start`,
+   * `resizing` and `resize-end` once. With an effective `lockAspectRatio` the other dimension
+   * follows, and `w` wins if both are given. Ignored during a gesture and while not `resizable`.
+   */
+  resizeTo: (size: ResizeToSize) => void
+  /** Sets `active` to false. */
+  deactivate: () => void
+}
+
 export interface DraggableResizableProps {
   /** Initial width (px), used when `w` / `v-model:w` is not set. */
   initW?: number
@@ -108,6 +133,20 @@ export interface DraggableResizableProps {
    * resize). @default `${Math.round(w)} × ${Math.round(h)}`
    */
   ariaSizeText?: (w: number, h: number) => string
+  /** Accessible name (`aria-label`) of the `toolbar` slot's wrapper. Pass a translation. */
+  toolbarLabel?: string
+  /**
+   * Where the `toolbar` slot sits. `auto` is `bottom`, unless the room below — in the viewport
+   * and the nearest ancestor that clips its overflow — is smaller than the toolbar and there is
+   * more room above. `auto` is a snapshot: evaluated when the element is activated and when a
+   * gesture ends, not on scroll. @default 'bottom'
+   */
+  toolbarPlacement?: ToolbarPlacement
+  /**
+   * A press outside the element deactivates it, unless this returns `true` for its target — e.g.
+   * for teleported content opened from the toolbar: `(el) => !!el.closest('[data-popover]')`.
+   */
+  ignoreOutside?: (target: Element) => boolean
   /** Additional class while `draggable` is enabled. @default 'vdr-draggable' */
   classNameDraggable?: string
   /** Additional class while `resizable` is enabled. @default 'vdr-resizable' */

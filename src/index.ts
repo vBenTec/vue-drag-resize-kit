@@ -12,4 +12,7 @@ export type {
   KeyboardMode,
   LayoutMode,
   ResizePayload,
+  ResizeToSize,
+  ToolbarPlacement,
+  ToolbarSlotProps,
 } from './vue/types'

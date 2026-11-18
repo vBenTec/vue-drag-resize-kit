@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, useId, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, useId, useTemplateRef, watch } from 'vue'
 
-import { isOnAnchoredEdge } from '../../core/direction'
+import { getInlineEndCorner, isOnAnchoredEdge } from '../../core/direction'
 import { getDefaultHandles, resolveHandles } from '../../core/handles'
 import type { ConstraintOptions, PhysicalResizeHandle, Rect } from '../../core/types'
 import { useBoundarySize } from '../composables/useBoundarySize'
@@ -10,7 +10,13 @@ import { useDirection } from '../composables/useDirection'
 import { useGesture } from '../composables/useGesture'
 import { useKeyboard } from '../composables/useKeyboard'
 import { useNaturalSize } from '../composables/useNaturalSize'
-import type { DraggableResizableEmits, DraggableResizableProps } from '../types'
+import { useToolbar } from '../composables/useToolbar'
+import type {
+  DraggableResizableEmits,
+  DraggableResizableProps,
+  ResizeToSize,
+  ToolbarSlotProps,
+} from '../types'
 
 const {
   layout = 'absolute',
@@ -35,6 +41,9 @@ const {
   keyboardMode,
   ariaRoleDescription = 'resizable',
   ariaSizeText = (sizeW: number, sizeH: number) => `${Math.round(sizeW)} × ${Math.round(sizeH)}`,
+  toolbarLabel,
+  toolbarPlacement = 'bottom',
+  ignoreOutside,
   classNameDraggable = 'vdr-draggable',
   classNameResizable = 'vdr-resizable',
   classNameDragging = 'vdr-dragging',
@@ -47,6 +56,7 @@ const emit = defineEmits<DraggableResizableEmits>()
 
 defineSlots<{
   default?: () => unknown
+  toolbar?: (props: ToolbarSlotProps) => unknown
 }>()
 
 const x = defineModel<number>('x', { default: 0 })
@@ -73,6 +83,7 @@ const rect = computed<Rect>({
 })
 
 const root = useTemplateRef<HTMLDivElement>('root')
+const toolbar = useTemplateRef<HTMLDivElement>('toolbar')
 const flow = computed(() => layout === 'flow')
 
 // Other elements in a `DraggableContainer` snap to this one, whether or not it can be dragged. In
@@ -121,7 +132,15 @@ const {
   flowAnchor: () => (flow.value ? flowAnchor : 'none'),
 })
 
-const { gesture, startDrag, startResize, stepDrag, stepResize, endSteps } = useGesture({
+const {
+  gesture,
+  startDrag,
+  startResize,
+  stepDrag,
+  stepResize,
+  endSteps,
+  resizeTo: resizeToCorner,
+} = useGesture({
   root,
   rect,
   constraints,
@@ -172,25 +191,75 @@ const resizingHandle = computed(() =>
   gesture.value?.kind === 'resize' ? gesture.value.handle : null,
 )
 
+const {
+  placement,
+  updatePlacement,
+  onKeydown: onToolbarKeydown,
+} = useToolbar({
+  root,
+  toolbar,
+  active,
+  placement: () => toolbarPlacement,
+  gesturing: () => !!gesture.value,
+  direction: () => direction.value,
+  focusable: () => keyboardEnabled.value,
+})
+
+// The toolbar is part of the element for outside presses and focus, but not for gestures: events
+// from it are not stopped (other elements' outside handlers still see them), only ignored here.
+const isInToolbar = (target: EventTarget | null) =>
+  target instanceof Node && !!toolbar.value?.contains(target)
+
+// A click in the toolbar does not activate: a button there may just have deactivated the element.
+const onClick = (event: MouseEvent) => {
+  if (!isInToolbar(event.target)) active.value = true
+}
+
 const onPointerDown = (event: PointerEvent) => {
+  if (isInToolbar(event.target)) return
   active.value = true
   boundarySize.refresh()
   startDrag(event)
 }
 
-const onHandlePointerDown = (event: PointerEvent, handle: PhysicalResizeHandle) => {
-  // The gesture's start rect (and a locked aspect ratio) must never be measured stale, nor the
-  // flow anchor it grows by.
+// Before a resize: its start rect (and a locked aspect ratio) must never be measured stale, nor the
+// flow anchor it grows by.
+const refreshBeforeResize = () => {
   naturalSize.refresh()
   boundarySize.refresh()
   refreshDirection()
+}
+
+const onHandlePointerDown = (event: PointerEvent, handle: PhysicalResizeHandle) => {
+  refreshBeforeResize()
   startResize(event, handle)
 }
 
+/**
+ * Resizes to `size` like a gesture that ends at once (see `useGesture`), at the inline-end /
+ * block-end edges like keyboard resizing.
+ */
+const resizeTo = (size: ResizeToSize) => {
+  refreshBeforeResize()
+  resizeToCorner(size, getInlineEndCorner(direction.value))
+  // Once a controlled model has followed.
+  void nextTick(updatePlacement)
+}
+
+const deactivate = () => {
+  active.value = false
+}
+
 const onOutsidePointerDown = (event: PointerEvent) => {
-  if (active.value && !root.value?.contains(event.target as Node | null)) {
-    active.value = false
-  }
+  const target = event.target
+  if (!active.value || root.value?.contains(target as Node | null)) return
+  if (target instanceof Element && ignoreOutside?.(target)) return
+  active.value = false
+}
+
+// Focus coming back from the toolbar (e.g. as it hides) does not activate the element again.
+const onRootFocus = (event: FocusEvent) => {
+  if (!isInToolbar(event.relatedTarget)) onFocus()
 }
 
 watch(active, (isActive) => {
@@ -199,9 +268,13 @@ watch(active, (isActive) => {
     refreshDirection()
     emit('activated')
   } else {
+    // Before the toolbar hides: focus inside it would be lost to the document otherwise.
+    if (keyboardEnabled.value && isInToolbar(document.activeElement)) root.value?.focus()
     emit('deactivated')
   }
 })
+
+defineExpose({ resizeTo })
 
 onMounted(() => document.addEventListener('pointerdown', onOutsidePointerDown))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutsidePointerDown))
@@ -256,10 +329,10 @@ const handleClasses = (handle: PhysicalResizeHandle) => [
     :data-dragging="dragging || undefined"
     :data-resizing="resizingHandle ?? undefined"
     v-bind="keyboardAttrs"
-    @click="active = true"
+    @click="onClick"
     @pointerdown="onPointerDown"
     @dragstart.prevent
-    @focus="onFocus"
+    @focus="onRootFocus"
     @blur="onBlur"
     @keydown="onKeydown"
     @keyup="onKeyup"
@@ -268,6 +341,24 @@ const handleClasses = (handle: PhysicalResizeHandle) => [
     <span v-if="keyboardEnabled" :id="sizeId" class="vdr-sr-only" aria-live="polite">
       {{ sizeText }}
     </span>
+    <div
+      v-if="$slots.toolbar"
+      v-show="active"
+      ref="toolbar"
+      class="vdr-toolbar"
+      role="toolbar"
+      :aria-label="toolbarLabel"
+      :data-placement="placement"
+      @keydown="onToolbarKeydown"
+    >
+      <slot
+        name="toolbar"
+        :rect="rect"
+        :gesture="gesture?.kind ?? null"
+        :resizeTo="resizeTo"
+        :deactivate="deactivate"
+      />
+    </div>
     <div
       v-for="handle in visibleHandles"
       v-show="active"
@@ -409,6 +500,40 @@ const handleClasses = (handle: PhysicalResizeHandle) => [
 .vdr-handle-ml,
 .vdr-handle-mr {
   cursor: ew-resize;
+}
+
+/* Out of flow, so it never takes part in the element's size. Below or above the handles' outer
+   edge, which follows the frame's theme, plus `--vdr-toolbar-offset`. */
+.vdr-toolbar {
+  --_vdr-frame-offset: var(--vdr-border-offset, 0px);
+  --_vdr-toolbar-gap: calc(
+    var(--_vdr-frame-offset) + var(--vdr-border-width, 1px) / 2 + var(--vdr-handle-size, 7px) / 2 +
+      var(--vdr-toolbar-offset, 4px)
+  );
+
+  position: absolute;
+  inset-inline-start: 0;
+}
+
+.vdr-toolbar[data-placement='bottom'] {
+  top: calc(100% + var(--_vdr-toolbar-gap));
+}
+
+.vdr-toolbar[data-placement='top'] {
+  bottom: calc(100% + var(--_vdr-toolbar-gap));
+}
+
+/* `max-content`: an absolutely positioned box would otherwise shrink to the element's width and
+   wrap its items. `z-index`: the root creates no stacking context, so positioned content after
+   the element would paint over the toolbar. */
+:where(.vdr-toolbar) {
+  z-index: 1;
+  box-sizing: border-box;
+  width: max-content;
+  padding: 4px;
+  color: CanvasText;
+  background: Canvas;
+  border: 1px solid;
 }
 
 .vdr-sr-only {

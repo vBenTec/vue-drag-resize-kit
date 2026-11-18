@@ -17,9 +17,9 @@ the `flowAnchor` prop, for `auto` from the `direction` and `text-align` of the n
 ancestor.
 
 **Gesture**: One drag or one resize of an element, from the first pointer movement after
-pointer-down until the pointer is released or the gesture is cancelled — or a key sequence. A
-press without movement is not a gesture and emits no events. An element has at most one gesture
-at a time.
+pointer-down until the pointer is released or the gesture is cancelled — or a key sequence, or a
+programmatic `resizeTo` call (one step, ended at once). A press without movement is not a gesture
+and emits no events. An element has at most one gesture at a time.
 
 **Guides**: The coordinates an element can snap to while it is dragged inside a container: custom
 guides, the parent's edges and centre, and the edges and centres of the other members. Vertical
@@ -48,3 +48,7 @@ container is a member, whether or not it can be dragged itself.
 the matched guides on every move and clears them when it ends. Only the most recently started
 session that has not ended can publish, so an older live session shows its guides again once the
 newer one ends.
+
+**Toolbar**: The content of the `toolbar` slot, rendered inside the element while it is active.
+It counts as part of the element for outside presses and focus, but not for gestures, keyboard
+resizing or measuring.
