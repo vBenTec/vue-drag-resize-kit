@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+## 1.2.0 — 2026-11-18
+
 Everything below is opt-in: without the new props and custom properties, rendering and resizing
 are pixel for pixel those of 1.1.0.
 
