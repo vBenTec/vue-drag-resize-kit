@@ -9,7 +9,11 @@ import {
   type DraggableResizableEmits,
   type DraggableResizableProps,
   type DragPayload,
+  type FlowAnchor,
+  type KeyboardMode,
   type LayoutMode,
+  type LogicalResizeHandle,
+  type PhysicalResizeHandle,
   type Rect,
   type ResizeHandle,
   type ResizePayload,
@@ -19,12 +23,15 @@ type Props = InstanceType<typeof DraggableResizable>['$props']
 type ContainerProps = InstanceType<typeof DraggableContainer>['$props']
 
 describe('ResizeHandle', () => {
-  it('only accepts the eight handles', () => {
-    expectTypeOf<ResizeHandle>().toEqualTypeOf<
+  it('accepts the eight physical and the six logical handles only', () => {
+    expectTypeOf<PhysicalResizeHandle>().toEqualTypeOf<
       'tl' | 'tm' | 'tr' | 'ml' | 'mr' | 'bl' | 'bm' | 'br'
     >()
+    expectTypeOf<LogicalResizeHandle>().toEqualTypeOf<'ts' | 'te' | 'ms' | 'me' | 'bs' | 'be'>()
+    expectTypeOf<ResizeHandle>().toEqualTypeOf<PhysicalResizeHandle | LogicalResizeHandle>()
     expectTypeOf<''>().not.toExtend<ResizeHandle>()
     expectTypeOf<'top'>().not.toExtend<ResizeHandle>()
+    expectTypeOf<'ss'>().not.toExtend<ResizeHandle>()
   })
 })
 
@@ -43,6 +50,17 @@ describe('DraggableResizable', () => {
     expectTypeOf<Props['maxW']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<Props['maxH']>().toEqualTypeOf<number | undefined>()
     expectTypeOf<Props['classNameHandle']>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<Props['flowAnchor']>().toEqualTypeOf<FlowAnchor | undefined>()
+    expectTypeOf<FlowAnchor>().toEqualTypeOf<'auto' | 'start' | 'end' | 'center' | 'none'>()
+    expectTypeOf<Props['hideAnchoredHandles']>().toEqualTypeOf<boolean | undefined>()
+    expectTypeOf<Props['keyboard']>().toEqualTypeOf<boolean | undefined>()
+    expectTypeOf<Props['keyboardStep']>().toEqualTypeOf<number | undefined>()
+    expectTypeOf<Props['keyboardMode']>().toEqualTypeOf<KeyboardMode | undefined>()
+    expectTypeOf<KeyboardMode>().toEqualTypeOf<'move' | 'resize'>()
+    expectTypeOf<Props['ariaRoleDescription']>().toEqualTypeOf<string | undefined>()
+    expectTypeOf<Props['ariaSizeText']>().toEqualTypeOf<
+      ((w: number, h: number) => string) | undefined
+    >()
     expectTypeOf<Props>().toExtend<DraggableResizableProps>()
   })
 
@@ -90,6 +108,9 @@ describe('DraggableResizable', () => {
   it('rejects wrong prop types', () => {
     expectTypeOf<{ handles: ['tl', ''] }>().not.toExtend<Props>()
     expectTypeOf<{ handles: string[] }>().not.toExtend<Props>()
+    expectTypeOf<{ handles: ['te', 'me', 'be'] }>().toExtend<Props>()
+    expectTypeOf<{ flowAnchor: 'left' }>().not.toExtend<Props>()
+    expectTypeOf<{ keyboardMode: 'scale' }>().not.toExtend<Props>()
     expectTypeOf<{ parent: 'yes' }>().not.toExtend<Props>()
     expectTypeOf<{ layout: 'inline' }>().not.toExtend<Props>()
     expectTypeOf<{ boundary: 42 }>().not.toExtend<Props>()

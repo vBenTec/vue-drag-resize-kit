@@ -1,48 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createApp, defineComponent, h, nextTick, reactive, type App } from 'vue'
+import { h, nextTick, reactive } from 'vue'
 
 import type { Rect } from '../../core/types'
-import { pointer, rectOf } from '../../test-utils'
+import { handleOf, pointer, rectOf } from '../../test-utils'
+import {
+  dragFromCentre,
+  mountControlledImage,
+  mountInto,
+  rendered,
+  rootOf,
+  unmountAll,
+} from '../../test-utils/browser'
 import DraggableContainer from './DraggableContainer.vue'
 import DraggableResizable from './DraggableResizable.vue'
 
-const svgImage = (width: number, height: number) =>
-  `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${width}' ` +
-  `height='${height}'><rect width='${width}' height='${height}' fill='%234f46e5'/></svg>`
-
-let apps: App<Element>[] = []
-
-afterEach(() => {
-  for (const app of apps) app.unmount()
-  apps = []
-  document.body.innerHTML = ''
-})
-
-/**
- * Presses on `target`, applies each move and releases at the last position. Yields to the Vue
- * scheduler between events, as a real browser does between real pointer events — a controlled
- * parent's echo lands before the next event.
- */
-const gesture = async (target: Element, moves: [number, number][]) => {
-  pointer(target, 'pointerdown', 200, 200)
-  let last: [number, number] = [0, 0]
-  for (const [deltaX, deltaY] of moves) {
-    last = [deltaX, deltaY]
-    // oxlint-disable-next-line no-await-in-loop -- the moves are sequential by nature
-    await nextTick()
-    pointer(document, 'pointermove', 200 + deltaX, 200 + deltaY)
-  }
-  await nextTick()
-  pointer(document, 'pointerup', 200 + last[0], 200 + last[1])
-  await nextTick()
-}
-
-const handleOf = (root: HTMLElement, name: string) =>
-  root.querySelector<HTMLElement>(`[data-handle="${name}"]`)!
-
-/** Waits until the browser rendered a frame, so pending `ResizeObserver` notifications are in. */
-const rendered = () =>
-  new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+afterEach(unmountAll)
 
 interface FlowState {
   w: number
@@ -72,39 +44,14 @@ const mountEditorImage = async ({
   document.body.appendChild(editor)
 
   const state = reactive<FlowState>({ w: 0, h: 0, active, resizeStarts: [], resizeEnds: [] })
+  await mountControlledImage(editor.querySelector('.host')!, state, [intrinsicW, intrinsicH], {
+    boundary: '.editor',
+    'onResize-start': (rect: Rect) => state.resizeStarts.push(rect),
+    'onResize-end': (rect: Rect) => state.resizeEnds.push(rect),
+    ...props,
+  })
 
-  const app = createApp(
-    defineComponent({
-      setup: () => () =>
-        h(
-          DraggableResizable,
-          {
-            layout: 'flow',
-            boundary: '.editor',
-            lockAspectRatio: true,
-            w: state.w,
-            h: state.h,
-            active: state.active,
-            'onUpdate:w': (value: number) => (state.w = value),
-            'onUpdate:h': (value: number) => (state.h = value),
-            'onUpdate:active': (value: boolean) => (state.active = value),
-            'onResize-start': (rect: Rect) => state.resizeStarts.push(rect),
-            'onResize-end': (rect: Rect) => state.resizeEnds.push(rect),
-            ...props,
-          },
-          () =>
-            h('img', {
-              src: svgImage(intrinsicW, intrinsicH),
-              style: 'display: block; width: 100%; height: 100%;',
-            }),
-        ),
-    }),
-  )
-  apps.push(app)
-  app.mount(editor.querySelector('.host')!)
-  await nextTick()
-
-  const root = editor.querySelector<HTMLElement>('.vdr-container')!
+  const root = rootOf(editor)
   const after = editor.querySelector<HTMLElement>('.after')!
   /** The boundary cap, computed the way the library computes it. */
   const contentWidth = () => {
@@ -153,7 +100,7 @@ describe('flow layout in an editor column', () => {
     })
     expect(state.w).toBeCloseTo(300, 3)
 
-    await gesture(handleOf(root, 'br'), [[-100, 0]])
+    await dragFromCentre(handleOf(root, 'br'), [[-100, 0]])
     expect(state.w).toBeCloseTo(200, 3)
     expect(state.h).toBeCloseTo(150, 3)
 
@@ -168,7 +115,7 @@ describe('flow layout in an editor column', () => {
     expect(state.active).toBe(true)
 
     // Enlarging is capped at the editor's content width, past the initial 300px, aspect kept.
-    await gesture(handleOf(root, 'br'), [[1000, 0]])
+    await dragFromCentre(handleOf(root, 'br'), [[1000, 0]])
     expect(state.w).toBeCloseTo(contentWidth(), 3)
     expect(state.h).toBeCloseTo(state.w * (225 / 300), 3)
     expect(root.getBoundingClientRect().width).toBeCloseTo(state.w, 3)
@@ -179,22 +126,22 @@ describe('flow layout in an editor column', () => {
     const afterTop = after.offsetTop
 
     // Height growth pushes the following paragraph down.
-    await gesture(handleOf(root, 'br'), [[100, 0]])
+    await dragFromCentre(handleOf(root, 'br'), [[100, 0]])
     expect(state.h).toBeCloseTo(300, 3)
     expect(after.offsetTop).toBeCloseTo(afterTop + 75, 0)
 
     // tr grows the size but keeps the flow position: the top edge never moves.
     const top = root.getBoundingClientRect().top
     const wBefore = state.w
-    await gesture(handleOf(root, 'tr'), [[50, -99]])
+    await dragFromCentre(handleOf(root, 'tr'), [[50, -99]])
     expect(state.w).toBeCloseTo(wBefore + 50, 3)
     expect(root.getBoundingClientRect().top).toBeCloseTo(top, 3)
 
     // Two consecutive mr gestures each apply their own delta (no stale offsets).
     const w1 = state.w
-    await gesture(handleOf(root, 'mr'), [[-50, 0]])
+    await dragFromCentre(handleOf(root, 'mr'), [[-50, 0]])
     expect(state.w).toBeCloseTo(w1 - 50, 3)
-    await gesture(handleOf(root, 'mr'), [[-50, 0]])
+    await dragFromCentre(handleOf(root, 'mr'), [[-50, 0]])
     expect(state.w).toBeCloseTo(w1 - 100, 3)
   })
 
@@ -208,7 +155,7 @@ describe('flow layout in an editor column', () => {
     expect(state.resizeEnds).toHaveLength(0)
     expect(state.w).toBeCloseTo(300, 3)
 
-    await gesture(handleOf(root, 'br'), [
+    await dragFromCentre(handleOf(root, 'br'), [
       [10, 0],
       [20, 0],
     ])
@@ -225,7 +172,7 @@ describe('flow layout in an editor column', () => {
     })
 
     // Make the size explicit, then change the boundary while deactivated.
-    await gesture(handleOf(root, 'br'), [[-100, 0]])
+    await dragFromCentre(handleOf(root, 'br'), [[-100, 0]])
     expect(state.w).toBeCloseTo(200, 3)
     pointer(document.body, 'pointerdown', 5, 5)
     pointer(document, 'pointerup', 5, 5)
@@ -237,12 +184,12 @@ describe('flow layout in an editor column', () => {
     await nextTick()
     // The element never resizes itself; the next gesture clamps to the new cap.
     expect(root.getBoundingClientRect().width).toBeCloseTo(200, 3)
-    await gesture(handleOf(root, 'br'), [[1, 0]])
+    await dragFromCentre(handleOf(root, 'br'), [[1, 0]])
     expect(state.w).toBeCloseTo(contentWidth(), 3)
 
     // Shrinking the boundary while active is applied at the next gesture, too.
     editor.style.width = '120.5px'
-    await gesture(handleOf(root, 'br'), [[1, 0]])
+    await dragFromCentre(handleOf(root, 'br'), [[1, 0]])
     expect(state.w).toBeCloseTo(contentWidth(), 3)
   })
 })
@@ -261,7 +208,7 @@ describe('natural size measurement', () => {
     expect(state.w).toBeCloseTo(300, 3)
     expect(state.h).toBeCloseTo(225, 3)
 
-    await gesture(handleOf(root, 'br'), [[10, 0]])
+    await dragFromCentre(handleOf(root, 'br'), [[10, 0]])
     expect(state.resizeStarts[0]!.w).toBeCloseTo(300, 3)
     expect(state.w).toBeCloseTo(310, 3)
   })
@@ -272,33 +219,28 @@ describe('natural size measurement', () => {
     document.body.appendChild(host)
 
     const state = reactive({ w: 0, h: 0 })
-    const app = createApp(
-      defineComponent({
-        setup: () => () =>
-          h(
-            DraggableResizable,
-            {
-              layout: 'flow',
-              active: true,
-              w: state.w,
-              h: state.h,
-              'onUpdate:w': (value: number) => (state.w = value),
-              'onUpdate:h': (value: number) => (state.h = value),
-            },
-            () => h('div', { style: 'width: 300px; height: 100px;' }),
-          ),
-      }),
+    await mountInto(host, () =>
+      h(
+        DraggableResizable,
+        {
+          layout: 'flow',
+          active: true,
+          w: state.w,
+          h: state.h,
+          'onUpdate:w': (value: number) => (state.w = value),
+          'onUpdate:h': (value: number) => (state.h = value),
+        },
+        () => h('div', { style: 'width: 300px; height: 100px;' }),
+      ),
     )
-    apps.push(app)
-    app.mount(host)
-    const root = host.querySelector<HTMLElement>('.vdr-container')!
+    const root = rootOf(host)
 
     // The observer's entries are logical: inline size = height, block size = width here.
     await rendered()
     expect(state.w).toBeCloseTo(300, 3)
     expect(state.h).toBeCloseTo(100, 3)
 
-    await gesture(handleOf(root, 'br'), [[10, 20]])
+    await dragFromCentre(handleOf(root, 'br'), [[10, 20]])
     expect(state.w).toBeCloseTo(310, 3)
     expect(state.h).toBeCloseTo(120, 3)
   })
@@ -310,25 +252,19 @@ describe('flow element in a DraggableContainer', () => {
     parent.style.cssText = 'width: 400px; height: 300px;'
     document.body.appendChild(parent)
 
-    const app = createApp(
-      defineComponent({
-        setup: () => () =>
-          h(DraggableContainer, { snapToParent: false }, () => [
-            h('p', { style: 'margin: 0; height: 40px;' }),
-            h(DraggableResizable, {
-              class: 'flow',
-              layout: 'flow',
-              w: 50,
-              h: 50,
-              style: 'margin-left: 120px;',
-            }),
-            h(DraggableResizable, { class: 'dragged', initW: 50, initH: 50 }),
-          ]),
-      }),
+    await mountInto(parent, () =>
+      h(DraggableContainer, { snapToParent: false }, () => [
+        h('p', { style: 'margin: 0; height: 40px;' }),
+        h(DraggableResizable, {
+          class: 'flow',
+          layout: 'flow',
+          w: 50,
+          h: 50,
+          style: 'margin-left: 120px;',
+        }),
+        h(DraggableResizable, { class: 'dragged', initW: 50, initH: 50 }),
+      ]),
     )
-    apps.push(app)
-    app.mount(parent)
-    await nextTick()
 
     const container = parent.querySelector<HTMLElement>('.vdr-snap-container')!
     const flow = parent.querySelector<HTMLElement>('.flow')!
@@ -340,7 +276,7 @@ describe('flow element in a DraggableContainer', () => {
 
     // The dragged element's right edge ends 3px before the flow element's left edge, its top 3px
     // below the flow element's bottom: both snap.
-    await gesture(dragged, [[left - 53, top + 53]])
+    await dragFromCentre(dragged, [[left - 53, top + 53]])
     expect(rectOf(dragged)).toEqual({ x: left - 50, y: top + 50, w: 50, h: 50 })
   })
 })
@@ -352,34 +288,28 @@ describe('absolute layout regression smoke', () => {
     document.body.appendChild(parent)
 
     const state = reactive({ x: 100, y: 100, w: 100, h: 50 })
-    const app = createApp(
-      defineComponent({
-        setup: () => () =>
-          h(DraggableResizable, {
-            parent: true,
-            active: true,
-            x: state.x,
-            y: state.y,
-            w: state.w,
-            h: state.h,
-            'onUpdate:x': (value: number) => (state.x = value),
-            'onUpdate:y': (value: number) => (state.y = value),
-            'onUpdate:w': (value: number) => (state.w = value),
-            'onUpdate:h': (value: number) => (state.h = value),
-          }),
+    await mountInto(parent, () =>
+      h(DraggableResizable, {
+        parent: true,
+        active: true,
+        x: state.x,
+        y: state.y,
+        w: state.w,
+        h: state.h,
+        'onUpdate:x': (value: number) => (state.x = value),
+        'onUpdate:y': (value: number) => (state.y = value),
+        'onUpdate:w': (value: number) => (state.w = value),
+        'onUpdate:h': (value: number) => (state.h = value),
       }),
     )
-    apps.push(app)
-    app.mount(parent)
-    await nextTick()
-    const root = parent.querySelector<HTMLElement>('.vdr-container')!
+    const root = rootOf(parent)
 
     // tl resizing anchors the opposite corner: the rect moves.
-    await gesture(handleOf(root, 'tl'), [[10, 20]])
+    await dragFromCentre(handleOf(root, 'tl'), [[10, 20]])
     expect(rectOf(root)).toEqual({ x: 110, y: 120, w: 90, h: 30 })
 
     // Dragging stays inside the parent.
-    await gesture(root, [[500, 500]])
+    await dragFromCentre(root, [[500, 500]])
     expect(rectOf(root)).toEqual({ x: 210, y: 270, w: 90, h: 30 })
   })
 })

@@ -3,6 +3,12 @@ import { fileURLToPath } from 'node:url'
 import vue from '@vitejs/plugin-vue'
 import { playwright } from '@vitest/browser-playwright'
 import { configDefaults, defineConfig } from 'vitest/config'
+import type { BrowserCommand } from 'vitest/node'
+
+/** Emulates `forced-colors: active` (Windows high contrast) in the test page, or turns it off. */
+const setForcedColors: BrowserCommand<[active: boolean]> = async ({ page }, active) => {
+  await page.emulateMedia({ forcedColors: active ? 'active' : 'none' })
+}
 
 export default defineConfig({
   plugins: [vue()],
@@ -47,6 +53,7 @@ export default defineConfig({
             headless: true,
             provider: playwright(),
             instances: [{ browser: 'chromium' }],
+            commands: { setForcedColors },
           },
         },
       },

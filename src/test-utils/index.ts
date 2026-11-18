@@ -1,5 +1,9 @@
+import { mount } from '@vue/test-utils'
 import { vi } from 'vitest'
 import { nextTick } from 'vue'
+
+import DraggableResizable from '../vue/components/DraggableResizable.vue'
+import type { DraggableResizableProps } from '../vue/types'
 
 type PointerType = 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel'
 
@@ -35,6 +39,39 @@ export const setInnerSize = (element: Element, width: number, height: number) =>
   Object.defineProperty(element, 'clientWidth', { configurable: true, get: () => width })
   Object.defineProperty(element, 'clientHeight', { configurable: true, get: () => height })
 }
+
+export type ElementProps = DraggableResizableProps & {
+  x?: number
+  y?: number
+  w?: number
+  h?: number
+  active?: boolean
+  'onUpdate:w'?: (value: number) => void
+  'onUpdate:h'?: (value: number) => void
+}
+
+/**
+ * Mounts a 100x50 element at 100/100 inside a 300x300 parent, in a host with the given styles
+ * (happy-dom inherits `direction` from styles, not from the `dir` attribute).
+ */
+export const mountElement = (props: ElementProps = {}, hostStyle = '') => {
+  const host = document.createElement('div')
+  host.style.cssText = hostStyle
+  document.body.appendChild(host)
+  const wrapper = mount(DraggableResizable, {
+    attachTo: host,
+    props: { x: 100, y: 100, w: 100, h: 50, ...props },
+  })
+  setInnerSize(wrapper.element.parentElement!, 300, 300)
+  return wrapper
+}
+
+export const handleOf = (root: Element, name: string) =>
+  root.querySelector<HTMLElement>(`[data-handle="${name}"]`)!
+
+/** The `data-handle` names of the rendered handles, in order. */
+export const handleNames = (root: Element) =>
+  [...root.querySelectorAll<HTMLElement>('.vdr-handle')].map((handle) => handle.dataset.handle)
 
 /** A `ResizeObserver` created by {@link stubResizeObserver}, triggerable from a test. */
 export interface ResizeObserverStub {

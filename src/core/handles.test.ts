@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { ALL_HANDLES, filterHandles } from './handles'
+import { ALL_HANDLES, filterHandles, resolveHandle, resolveHandles } from './handles'
 
 describe('filterHandles', () => {
   it('keeps valid handles in the given order', () => {
@@ -15,5 +15,42 @@ describe('filterHandles', () => {
   it('tolerates missing input', () => {
     expect(filterHandles(undefined)).toEqual([])
     expect(filterHandles(null)).toEqual([])
+  })
+
+  it('keeps logical handles', () => {
+    expect(filterHandles(['te', 'me', 'be', 'ss', 'me'])).toEqual(['te', 'me', 'be'])
+  })
+})
+
+describe('resolveHandle', () => {
+  it.each([
+    ['ts', 'tl', 'tr'],
+    ['ms', 'ml', 'mr'],
+    ['bs', 'bl', 'br'],
+    ['te', 'tr', 'tl'],
+    ['me', 'mr', 'ml'],
+    ['be', 'br', 'bl'],
+  ] as const)('resolves %s to %s in LTR and %s in RTL', (logical, ltr, rtl) => {
+    expect(resolveHandle(logical, 'ltr')).toBe(ltr)
+    expect(resolveHandle(logical, 'rtl')).toBe(rtl)
+  })
+
+  it('leaves physical handles alone', () => {
+    for (const handle of ALL_HANDLES) {
+      expect(resolveHandle(handle, 'ltr')).toBe(handle)
+      expect(resolveHandle(handle, 'rtl')).toBe(handle)
+    }
+  })
+})
+
+describe('resolveHandles', () => {
+  it('resolves logical handles against the direction', () => {
+    expect(resolveHandles(['te', 'me', 'be'], 'ltr')).toEqual(['tr', 'mr', 'br'])
+    expect(resolveHandles(['te', 'me', 'be'], 'rtl')).toEqual(['tl', 'ml', 'bl'])
+  })
+
+  it('renders a handle a logical and a physical entry resolve to once', () => {
+    expect(resolveHandles(['mr', 'me', 'ms', 'tm', 'nope'], 'ltr')).toEqual(['mr', 'ml', 'tm'])
+    expect(resolveHandles(['mr', 'me', 'ms'], 'rtl')).toEqual(['mr', 'ml'])
   })
 })

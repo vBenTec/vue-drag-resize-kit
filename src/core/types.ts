@@ -1,5 +1,17 @@
-/** Identifier of a resize handle: `t`op / `m`iddle / `b`ottom + `l`eft / `m`iddle / `r`ight. */
-export type ResizeHandle = 'tl' | 'tm' | 'tr' | 'ml' | 'mr' | 'bl' | 'bm' | 'br'
+/** A handle at a fixed side: `t`op / `m`iddle / `b`ottom + `l`eft / `m`iddle / `r`ight. */
+export type PhysicalResizeHandle = 'tl' | 'tm' | 'tr' | 'ml' | 'mr' | 'bl' | 'bm' | 'br'
+
+/**
+ * A handle on the inline-`s`tart / inline-`e`nd side (`t`op / `m`iddle / `b`ottom + `s` / `e`),
+ * resolved against the text direction: `ms` is `ml` in LTR and `mr` in RTL.
+ */
+export type LogicalResizeHandle = 'ts' | 'te' | 'ms' | 'me' | 'bs' | 'be'
+
+/** Identifier of a resize handle, physical or logical. */
+export type ResizeHandle = PhysicalResizeHandle | LogicalResizeHandle
+
+/** Text direction, as the computed `direction` of an element. */
+export type Direction = 'ltr' | 'rtl'
 
 export interface Point {
   x: number

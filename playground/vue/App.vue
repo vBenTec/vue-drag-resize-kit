@@ -81,6 +81,43 @@
       </p>
     </div>
 
+    <h2>Right-to-left, keyboard and Gmail-like theme</h2>
+    <div>
+      direction:
+      <select v-model="rtl.dir">
+        <option value="ltr">ltr</option>
+        <option value="rtl">rtl</option>
+        <option value="auto">auto</option>
+      </select>
+      text-align:
+      <select v-model="rtl.align">
+        <option value="start">start</option>
+        <option value="center">center</option>
+        <option value="end">end</option>
+      </select>
+      <label><input v-model="rtl.gmail" type="checkbox" /> Gmail-like theme</label>
+      — Tab to the image, then use the arrow keys (Shift for ×10), Home / End and Escape.
+    </div>
+    <div class="editor" :class="{ gmail: rtl.gmail }">
+      <p :dir="rtl.dir" :style="{ textAlign: rtl.align }">
+        {{ rtl.dir === 'ltr' ? 'Text before the image.' : 'טקסט לפני התמונה.' }}
+        <DraggableResizable
+          layout="flow"
+          boundary=".editor"
+          lockAspectRatio
+          flowAnchor="auto"
+          hideAnchoredHandles
+          keyboard
+          aria-label="Example image"
+          v-model:w="rtl.w"
+          v-model:h="rtl.h"
+          v-model:active="rtl.active"
+        >
+          <img :src="imageSrc" alt="Example" style="display: block; width: 100%; height: 100%" />
+        </DraggableResizable>
+      </p>
+    </div>
+
     <h2>Snapping container</h2>
     <div class="parent">
       <DraggableContainer>
@@ -168,6 +205,15 @@ const image = reactive({
   lastResizeEnd: null as string | null,
 })
 
+const rtl = reactive({
+  dir: 'rtl' as 'ltr' | 'rtl' | 'auto',
+  align: 'start' as 'start' | 'center' | 'end',
+  gmail: true,
+  w: 240,
+  h: 180,
+  active: false,
+})
+
 const imageSrc =
   "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='600'>" +
   "<rect width='800' height='600' fill='%234f46e5'/>" +
@@ -185,6 +231,16 @@ const print = (msg: string, payload?: DragPayload | ResizePayload) => {
   border: 1px solid #999;
   font-family: sans-serif;
   line-height: 1.5;
+}
+
+.gmail {
+  --vdr-border-offset: 0;
+  --vdr-border-color: #4f46e5;
+  --vdr-handle-size: 10px;
+  --vdr-handle-background: #4f46e5;
+  --vdr-handle-border-color: #fff;
+  --vdr-handle-border-width: 2px;
+  --vdr-handle-hit-size: 24px;
 }
 
 .parent {
