@@ -42,6 +42,9 @@ are pixel for pixel those of 1.1.0.
 
 ### Notes
 
+- **`ResizeHandle` is wider.** It now also includes the six logical names. Nothing changes at
+  runtime, but TypeScript code that exhaustively `switch`es over a `ResizeHandle` (e.g. with an
+  `assertNever` default) needs the new cases or should use `PhysicalResizeHandle`.
 - **Handle centring:** while `--vdr-border-offset` is unset, the handles keep their 1.x position,
   half the frame width outside the content edge, although the default frame line is drawn just
   inside it (a 1px mismatch). It is kept on purpose so that existing layouts do not shift; set
