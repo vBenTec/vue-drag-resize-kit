@@ -230,8 +230,8 @@ importers:
         specifier: 2.0.0-alpha.21
         version: 2.0.0-alpha.21(@types/node@24.19.2)(postcss@8.5.33)(typescript@6.0.3)(yaml@2.9.1)
       vitepress-plugin-llms:
-        specifier: 1.14.0
-        version: 1.14.0(supports-color@7.2.0)
+        specifier: 1.15.0
+        version: 1.15.0(supports-color@7.2.0)
       vitest:
         specifier: ^5.1.0
         version: 5.1.0(@types/node@24.19.2)(@vitest/browser-playwright@5.1.0)(@vitest/ui@5.1.0)(happy-dom@21.0.4)(vite@8.3.8(@types/node@24.19.2)(yaml@2.9.1))
@@ -244,8 +244,8 @@ importers:
 
 packages:
 
-  '@11ty/gray-matter@2.1.0':
-    resolution: {integrity: sha512-fNdBOb3MgDz/1UCIoeY4wDuGbp+/3s5y6UrsyfMabECbh/CVycj7Er33JXqSxRwxrRKXcGE1Jipuq/1mODInsQ==}
+  '@11ty/gray-matter@3.0.0':
+    resolution: {integrity: sha512-mi6KB36DZCpCfCb9XP3NtDDNXe1N0jKtuFj9mTCZNy5H7vTabODyMgFmmOiGIGJKt+i8mJqEb/REtK+JTEzlpQ==}
     engines: {node: '>=11'}
 
   '@andrewbranch/untar.js@1.0.4':
@@ -310,6 +310,9 @@ packages:
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
+
+  '@isaacs/nonrecursive-glob-match@1.1.0':
+    resolution: {integrity: sha512-GPm/Dbvk5RLmhRnxXIa7nTpK0xtl4E0wj0MslsuNiJ1FIROU+2+9lgUC/dgF7Ey4QCWhfEsgxilMRMCdHPfDfw==}
 
   '@jridgewell/resolve-uri@3.1.3':
     resolution: {integrity: sha512-lhTtjtoEArWBjismtfS761S9Hlyn+nIZqOZVYoZ1Xn82PMNMVnk+jj/NhC4fAXGTs7ydONcJiR5vyQBTMDu27g==}
@@ -1118,6 +1121,9 @@ packages:
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
+  argparse@3.0.4:
+    resolution: {integrity: sha512-fwWK3Zq22l4XJJjx5mcBHGikIk+hJqO+32dPm0Jur7+rtG5x1scOjSfdT9ZKeWHPpsya/l0HHK4tDImBkTrtvA==}
+
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
@@ -1394,8 +1400,8 @@ packages:
   js-cookie@3.0.8:
     resolution: {integrity: sha512-yeJd4aNAdYZQjaon2bpD/Gb0B/omw7HQOsynXXcOiWVCacbBcPlgn8S/d1X6blFSaHao7ozqtW7NZW19xpCtIw==}
 
-  js-yaml@4.3.2:
-    resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
+  js-yaml@5.5.0:
+    resolution: {integrity: sha512-paNr4LFIFPjeeSmwNYdrb8FafLLG/Cr2Af3GjbsHJ5CxIjH4r0c2emlmRdAtpPAieP1gRVzk6buBbVP5gBMGAg==}
     hasBin: true
 
   kind-of@6.0.3:
@@ -1616,6 +1622,10 @@ packages:
   minimatch@10.2.6:
     resolution: {integrity: sha512-vpLQEs+VLCr1nU0BXS07maYoFwlDAH0gngQuuttxIwutDFEMHq2blX+8vpgxDdK3J1PwjCJiep77OitTZ4Ll1A==}
     engines: {node: 18 || 20 || >=22}
+
+  minimatch@11.0.9:
+    resolution: {integrity: sha512-KCFkfyjqerNlSstjlhIGNXIKZGA/6O4V4RlhZ+Dsr621SPPw0mzlypE9D9ZOoPiVefHID+j7/XuMMlqfD/F60Q==}
+    engines: {node: 20 || >=22}
 
   minipass@7.1.3:
     resolution: {integrity: sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==}
@@ -1918,8 +1928,10 @@ packages:
     resolution: {integrity: sha512-LgO3D9yZJjApUiuUfl9iFAwrtaX4+lok3wJIqttGoKCHlWUqHqbQpnxCf82L8FjgKsh4iGo78hqJwgL8F6To2A==}
     engines: {node: '>=14.0.0'}
 
-  tokenx@1.6.0:
-    resolution: {integrity: sha512-CKTjk345ajvBAUp5xUI9a5KKN0zU0lBueVHQbCskH1Hp6WkUKsPW2qGCYNs0pxNyfzxfo+IIjdt2W4sMbw/qBw==}
+  tokenx@2.2.1:
+    resolution: {integrity: sha512-SUJNDK3y8yv9R3eHgo1HmtfOq1hUFNac3syYwtJ8xKbzKsc1Mbr54fduWceYWFsBIRwTG26GuL7N1AkyomONwg==}
+    engines: {node: '>=24'}
+    hasBin: true
 
   totalist@3.0.1:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
@@ -2028,8 +2040,8 @@ packages:
       yaml:
         optional: true
 
-  vitepress-plugin-llms@1.14.0:
-    resolution: {integrity: sha512-Qb42p9pYoRlMRbv+Yvh3reS4GInyr+ToU3G1tEC1Euz+gyBNywXkZIQPV/AoltizaakAeuI89Bkhkd7Y0jaM/w==}
+  vitepress-plugin-llms@1.15.0:
+    resolution: {integrity: sha512-WuYhR+WCNJSwSlZFdkisS94/7o1Tt+DSngUgq65zxCDM7CroquAGzuNl3BQhAaXno2uoBTmjzDD47LzRwsFhww==}
     engines: {node: '>=18'}
 
   vitepress@2.0.0-alpha.21:
@@ -2182,9 +2194,9 @@ packages:
 
 snapshots:
 
-  '@11ty/gray-matter@2.1.0':
+  '@11ty/gray-matter@3.0.0':
     dependencies:
-      js-yaml: 4.3.2
+      js-yaml: 5.5.0
       section-matter: 1.0.0
 
   '@andrewbranch/untar.js@1.0.4': {}
@@ -2257,6 +2269,8 @@ snapshots:
       '@iconify/types': 2.0.0
 
   '@iconify/types@2.0.0': {}
+
+  '@isaacs/nonrecursive-glob-match@1.1.0': {}
 
   '@jridgewell/resolve-uri@3.1.3': {}
 
@@ -2847,6 +2861,8 @@ snapshots:
 
   argparse@2.0.1: {}
 
+  argparse@3.0.4: {}
+
   assertion-error@2.0.1: {}
 
   axe-core@4.14.0: {}
@@ -3083,9 +3099,9 @@ snapshots:
 
   js-cookie@3.0.8: {}
 
-  js-yaml@4.3.2:
+  js-yaml@5.5.0:
     dependencies:
-      argparse: 2.0.1
+      argparse: 3.0.4
 
   kind-of@6.0.3: {}
 
@@ -3405,6 +3421,11 @@ snapshots:
 
   minimatch@10.2.6:
     dependencies:
+      brace-expansion: 5.0.13
+
+  minimatch@11.0.9:
+    dependencies:
+      '@isaacs/nonrecursive-glob-match': 1.1.0
       brace-expansion: 5.0.13
 
   minipass@7.1.3: {}
@@ -3746,7 +3767,7 @@ snapshots:
 
   tinyrainbow@3.2.0: {}
 
-  tokenx@1.6.0: {}
+  tokenx@2.2.1: {}
 
   totalist@3.0.1: {}
 
@@ -3830,20 +3851,20 @@ snapshots:
       fsevents: 2.3.3
       yaml: 2.9.1
 
-  vitepress-plugin-llms@1.14.0(supports-color@7.2.0):
+  vitepress-plugin-llms@1.15.0(supports-color@7.2.0):
     dependencies:
-      '@11ty/gray-matter': 2.1.0
+      '@11ty/gray-matter': 3.0.0
       markdown-it: 14.3.3
       markdown-title: 1.0.2
       mdast-util-from-markdown: 2.1.0(supports-color@7.2.0)
       millify: 6.1.0
-      minimatch: 10.2.6
+      minimatch: 11.0.9
       path-to-regexp: 6.3.0
       picocolors: 1.1.1
       pretty-bytes: 7.2.0
       remark: 15.0.1(supports-color@7.2.0)
       remark-frontmatter: 5.0.0(supports-color@7.2.0)
-      tokenx: 1.6.0
+      tokenx: 2.2.1
       unist-util-remove: 4.0.0
       unist-util-visit: 5.2.0
     transitivePeerDependencies:
