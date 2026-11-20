@@ -13,6 +13,19 @@ export type ResizeHandle = PhysicalResizeHandle | LogicalResizeHandle
 /** Text direction, as the computed `direction` of an element. */
 export type Direction = 'ltr' | 'rtl'
 
+/**
+ * How a resize moves the rect:
+ *
+ * - `anchored`: the edge opposite to the moving one stays in place, so the rect moves when a
+ *   `t` / `l` edge is dragged (absolute layout).
+ * - `grow`: the rect never moves; `t` / `l` handles grow the size by the usual delta and the
+ *   element extends per its position in the layout (flow layout, whose position the browser owns).
+ * - `symmetric`: like `grow`, but the left and right edges move symmetrically, as for an element
+ *   on a centred line: the width changes by twice the horizontal delta, so the dragged edge follows
+ *   the pointer.
+ */
+export type ResizeMode = 'anchored' | 'grow' | 'symmetric'
+
 export interface Point {
   x: number
   y: number

@@ -1,23 +1,32 @@
-import { onScopeDispose, readonly, shallowRef, type Ref, type ShallowRef } from 'vue'
+import { onScopeDispose, readonly, shallowRef, type Ref } from 'vue'
 
+import { getInlineEndCorner } from '../../core/direction'
 import { createGestures, type Gesture, type GesturePhase } from '../../core/gesture'
 import { isPrimaryPointer, trackPointer } from '../../core/pointer'
 import { dragRect, resizeRect, resizeRectTo, stepResizeRect } from '../../core/positioning'
-import type { ConstraintOptions, PhysicalResizeHandle, Rect } from '../../core/types'
+import type {
+  ConstraintOptions,
+  Direction,
+  PhysicalResizeHandle,
+  Rect,
+  ResizeMode,
+  Size,
+} from '../../core/types'
 import type { ContainerMember, DraggableResizableEmit, ResizeToSize } from '../types'
-import { useParentSize } from './useParentSize'
 
 export interface UseGestureOptions {
-  /** The element; its parent is measured for `parent` bounds and snapping. */
-  root: Readonly<ShallowRef<HTMLElement | null>>
   rect: Ref<Rect>
+  /** Inner size of the parent, for `parent` bounds and snapping. */
+  parentSize: Readonly<Ref<Size | null>>
+  /** The text direction: `resizeTo` changes the size at the inline-end edge. */
+  direction: () => Direction
+  /** Re-measures the element, before a gesture begins. */
+  measure: () => void
   constraints: Readonly<Ref<ConstraintOptions>>
   draggable: () => boolean
   resizable: () => boolean
-  /** Whether resizing from a `t` / `l` edge moves the rect to keep the opposite edge in place. */
-  anchor: () => boolean
-  /** Whether both horizontal edges move while resizing (a centred line in flow layout). */
-  symmetric: () => boolean
+  /** How a resize moves the rect. */
+  resizeMode: () => ResizeMode
   /** Membership in a `DraggableContainer`, for snapping while dragging. */
   member: ContainerMember | null
   emit: DraggableResizableEmit
@@ -25,29 +34,24 @@ export interface UseGestureOptions {
 
 /**
  * Drags and resizes an element by pointer, key steps and `resizeTo`, feeding the Gesture session
- * (`core/gesture`) with the rects computed under the constraints. Re-measures the parent when a
- * gesture starts and stops tracking the pointer when the owning scope is disposed.
+ * (`core/gesture`) with the rects computed under the constraints. Stops tracking the pointer when
+ * the owning scope is disposed.
  */
 export const useGesture = ({
-  root,
   rect,
+  parentSize,
+  direction,
+  measure,
   constraints,
   draggable,
   resizable,
-  anchor,
-  symmetric,
+  resizeMode,
   member,
   emit,
 }: UseGestureOptions) => {
   const gesture = shallowRef<Gesture | null>(null)
   // Stops tracking the current pointer gesture and runs its cleanup, without end events.
   let stopPointer: (() => void) | null = null
-
-  // The parent's size is needed for `parent` bounds and for snapping to the parent's edges.
-  const { parentSize, refresh: refreshParentSize } = useParentSize(
-    root,
-    () => !!constraints.value.parent || member !== null,
-  )
 
   const emitPhase = (phase: GesturePhase, current: Gesture, next: Rect) => {
     if (current.kind === 'drag') {
@@ -61,6 +65,7 @@ export const useGesture = ({
   }
 
   const gestures = createGestures({
+    measure,
     read: () => rect.value,
     write: (next) => {
       rect.value = next
@@ -73,26 +78,25 @@ export const useGesture = ({
 
   /**
    * Begins `next` and follows the pointer of `event` until it is released. `onMove` gets the
-   * distance since the press and returns the rect to move to; a move of zero before any movement
+   * distance since the press and the rect measured at the press, and returns the rect to move to; a move of zero before any movement
    * is not a movement (some touch stacks fire one right at the press). `cleanup` runs when the
    * gesture ends and when it is cancelled.
    */
   const track = (
     event: PointerEvent,
     next: Gesture,
-    onMove: (deltaX: number, deltaY: number) => Rect,
+    onMove: (deltaX: number, deltaY: number, start: Rect) => Rect,
     cleanup: () => void = () => {},
   ) => {
     const pointer = gestures.begin(next)
     if (!pointer) return false
-    refreshParentSize()
     let moved = false
 
     const stop = trackPointer(event, {
       onMove: (deltaX, deltaY) => {
         if (!moved && deltaX === 0 && deltaY === 0) return
         moved = true
-        pointer.move(onMove(deltaX, deltaY))
+        pointer.move(onMove(deltaX, deltaY, pointer.start))
       },
       onEnd: () => {
         stopPointer = null
@@ -109,17 +113,16 @@ export const useGesture = ({
 
   const startDrag = (event: PointerEvent) => {
     if (!draggable() || !isPrimaryPointer(event)) return
-    // Only the position is fixed at the start; bounds and snapping use the current size.
-    const origin = { x: rect.value.x, y: rect.value.y }
     let snap: ReturnType<ContainerMember['startSnap']> | null = null
 
     const started = track(
       event,
       { kind: 'drag' },
-      (deltaX, deltaY) => {
+      (deltaX, deltaY, { x, y }) => {
         const current = rect.value
+        // Only the position is fixed at the start; bounds and snapping use the current size.
         const next = dragRect({
-          start: { ...current, ...origin },
+          start: { ...current, x, y },
           deltaX,
           deltaY,
           options: constraints.value,
@@ -136,9 +139,8 @@ export const useGesture = ({
 
   const startResize = (event: PointerEvent, handle: PhysicalResizeHandle) => {
     if (!resizable() || !isPrimaryPointer(event)) return
-    const start = rect.value
 
-    track(event, { kind: 'resize', handle }, (deltaX, deltaY) =>
+    track(event, { kind: 'resize', handle }, (deltaX, deltaY, start) =>
       resizeRect({
         handle,
         start,
@@ -146,17 +148,14 @@ export const useGesture = ({
         deltaY,
         options: constraints.value,
         parentSize: parentSize.value,
-        anchor: anchor(),
-        symmetric: symmetric(),
+        mode: resizeMode(),
       }),
     )
   }
 
   /** Moves the element by one key step; the first step that moves it emits `drag-start`. */
   const stepDrag = (deltaX: number, deltaY: number) =>
-    gestures.step({ kind: 'drag' }, (current, first) => {
-      if (!draggable()) return null
-      if (first) refreshParentSize()
+    gestures.step({ kind: 'drag' }, draggable(), (current) => {
       const { x, y } = dragRect({
         start: current,
         deltaX,
@@ -174,9 +173,7 @@ export const useGesture = ({
    * limit (`Infinity` without a max size) is ignored.
    */
   const stepResize = (growW: number, growH: number, handle: 'bl' | 'br') =>
-    gestures.step({ kind: 'resize', handle }, (current, first) => {
-      if (!resizable()) return null
-      if (first) refreshParentSize()
+    gestures.step({ kind: 'resize', handle }, resizable(), (current) => {
       return stepResizeRect({
         start: current,
         growW,
@@ -184,28 +181,30 @@ export const useGesture = ({
         handle,
         options: constraints.value,
         parentSize: parentSize.value,
-        anchor: anchor(),
+        mode: resizeMode(),
       })
     })
 
   /**
-   * Resizes the element to `size` at the edges of its bottom corner `handle` (see
-   * `resizeRectTo`), as one gesture that ends at once: the three resize events, or none if nothing
-   * changes. Never joins or ends a running gesture — it is ignored then.
+   * Resizes the element to `size` at its inline-end / block-end edges (see `resizeRectTo`), as one
+   * gesture that ends at once: the three resize events, or none if nothing changes. Never joins or
+   * ends a running gesture — it is ignored then.
    */
-  const resizeTo = (size: ResizeToSize, handle: 'bl' | 'br') => {
-    if (gesture.value || !resizable()) return
-    refreshParentSize()
-    gestures.once({ kind: 'resize', handle }, (current) =>
-      resizeRectTo({
+  const resizeTo = (size: ResizeToSize) => {
+    if (!resizable()) return
+    gestures.once((current) => {
+      // After measuring: the corner follows the current direction.
+      const handle = getInlineEndCorner(direction())
+      const next = resizeRectTo({
         start: current,
         size,
         handle,
         options: constraints.value,
         parentSize: parentSize.value,
-        anchor: anchor(),
-      }),
-    )
+        mode: resizeMode(),
+      })
+      return next && { gesture: { kind: 'resize', handle }, rect: next }
+    })
   }
 
   // Unmounting mid-gesture stops it without emitting an end event and hides its matched guides.

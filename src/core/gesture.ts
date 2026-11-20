@@ -7,6 +7,8 @@ export type Gesture = { kind: 'drag' } | { kind: 'resize'; handle: PhysicalResiz
 export type GesturePhase = 'start' | 'move' | 'end'
 
 export interface GestureHost {
+  /** Re-measures the element; runs before a gesture reads the rect it begins with. */
+  measure: () => void
   /** The element's current rect. */
   read: () => Rect
   /** Moves or resizes the element. */
@@ -19,14 +21,16 @@ export interface GestureHost {
 
 /** A pointer gesture in progress. */
 export interface PointerGesture {
+  /** The rect the gesture began with, measured at the press. */
+  start: Rect
   /** Applies the rect of a pointer movement; the first one emits `start`. */
   move: (next: Rect) => void
   /** Ends the gesture on release; `end` only follows a `start`. */
   end: () => void
 }
 
-/** Computes the rect after a key step from the current one, `null` if the step changes nothing. */
-export type StepTarget = (current: Rect, first: boolean) => Rect | null
+/** Computes the rect after a step from the current one, `null` if the step changes nothing. */
+export type StepTarget = (current: Rect) => Rect | null
 
 /**
  * The gestures of one element, at most one at a time: a pointer gesture, a key sequence or a
@@ -50,11 +54,13 @@ export const createGestures = (host: GestureHost) => {
    */
   const begin = (gesture: Gesture): PointerGesture | null => {
     if (current) return null
+    host.measure()
     const start = host.read()
     let started = false
     set(gesture)
 
     return {
+      start,
       move: (next) => {
         if (!started) {
           started = true
@@ -83,13 +89,15 @@ export const createGestures = (host: GestureHost) => {
   /**
    * One step of a key sequence of `gesture`; the sequence starts with the first step that changes
    * the element. A running sequence of the other kind ends first; during a pointer gesture the
-   * step is ignored. `target` learns whether the step would start the sequence.
+   * step is ignored, and so is a step that is not `enabled` (after ending the other kind). A step
+   * that could start the sequence measures first.
    */
-  const step = (gesture: Gesture, target: StepTarget) => {
+  const step = (gesture: Gesture, enabled: boolean, target: StepTarget) => {
     if (stepping && current?.kind !== gesture.kind) endSteps()
-    if (current && !stepping) return
+    if (!enabled || (current && !stepping)) return
+    if (!stepping) host.measure()
     const before = host.read()
-    const next = target(before, !stepping)
+    const next = target(before)
     if (!next) return
     if (!stepping) {
       stepping = true
@@ -103,13 +111,16 @@ export const createGestures = (host: GestureHost) => {
   /**
    * A gesture of one step that ends at once: `start`, `move` and `end`, with `end` carrying the
    * computed rect (a controlled model has not followed yet). Ignored while a gesture runs, and
-   * emits nothing if `target` returns `null`.
+   * emits nothing if `target` returns `null`. `target` runs after measuring, so it may pick the
+   * gesture (e.g. the handle) from fresh measurements.
    */
-  const once = (gesture: Gesture, target: (current: Rect) => Rect | null) => {
+  const once = (target: (current: Rect) => { gesture: Gesture; rect: Rect } | null) => {
     if (current) return
+    host.measure()
     const before = host.read()
-    const next = target(before)
-    if (!next) return
+    const result = target(before)
+    if (!result) return
+    const { gesture, rect: next } = result
     host.emit('start', gesture, before)
     host.write(next)
     host.emit('move', gesture, next)
