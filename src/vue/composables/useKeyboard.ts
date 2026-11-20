@@ -1,5 +1,3 @@
-import type { Ref } from 'vue'
-
 import { getInlineEndCorner } from '../../core/direction'
 import type { Direction } from '../../core/types'
 import type { KeyboardMode } from '../types'
@@ -7,7 +5,10 @@ import type { KeyboardMode } from '../types'
 export interface UseKeyboardOptions {
   /** Whether keyboard interaction is on. */
   enabled: () => boolean
-  active: Ref<boolean>
+  active: () => boolean
+  /** Asks to activate (`Enter`) or deactivate (`Escape`) the element. */
+  activate: () => void
+  deactivate: () => void
   mode: () => KeyboardMode
   /** Distance of one step (px); `Shift` multiplies it by 10. */
   step: () => number
@@ -28,15 +29,17 @@ const ARROWS: Partial<Record<string, [x: number, y: number]>> = {
 }
 
 /**
- * Keyboard interaction on the focused element: focus activates, `Enter` re-activates, `Escape`
- * deactivates. While active, the arrow keys move the element (`move` mode) or resize its
- * inline-end / block-end edges (`resize` mode: `ArrowRight` grows the width in LTR, `ArrowLeft`
- * in RTL), and `Home` / `End` resize the width to its min / max. The keys held at once form one
- * sequence — one gesture, ended when the last of them is released or the element loses focus.
+ * Keyboard interaction on the focused element: `Enter` activates, `Escape` deactivates. While
+ * active, the arrow keys move the element (`move` mode) or resize its inline-end / block-end edges
+ * (`resize` mode: `ArrowRight` grows the width in LTR, `ArrowLeft` in RTL), and `Home` / `End`
+ * resize the width to its min / max. The keys held at once form one sequence — one gesture, ended
+ * when the last of them is released or the element loses focus.
  */
 export const useKeyboard = ({
   enabled,
   active,
+  activate,
+  deactivate,
   mode,
   step,
   direction,
@@ -80,16 +83,17 @@ export const useKeyboard = ({
     if (!enabled() || event.target !== event.currentTarget) return
 
     if (event.key === 'Escape' || event.key === 'Enter') {
-      const activate = event.key === 'Enter'
-      if (active.value === activate) return
+      const activating = event.key === 'Enter'
+      if (active() === activating) return
       end()
-      active.value = activate
+      if (activating) activate()
+      else deactivate()
       event.preventDefault()
       return
     }
 
     // Arrows of an inactive element scroll the page as usual; shortcuts are left alone.
-    if (!active.value || event.altKey || event.ctrlKey || event.metaKey) return
+    if (!active() || event.altKey || event.ctrlKey || event.metaKey) return
     if (!handles(event.key)) return
     if (pressed.size === 0) refresh()
     perform(event.key, step() * (event.shiftKey ? 10 : 1))
@@ -102,9 +106,5 @@ export const useKeyboard = ({
     endSteps()
   }
 
-  const onFocus = () => {
-    if (enabled()) active.value = true
-  }
-
-  return { onKeydown, onKeyup, onFocus, onBlur: end }
+  return { onKeydown, onKeyup, onBlur: end }
 }

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, useId, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, useId, useTemplateRef } from 'vue'
 
 import { isOnAnchoredEdge } from '../../core/direction'
 import { getDefaultHandles, resolveHandles } from '../../core/handles'
 import { resolveLayout } from '../../core/layout'
 import type { PhysicalResizeHandle, Rect } from '../../core/types'
+import { useActivation } from '../composables/useActivation'
 import { useContainerMember } from '../composables/useContainer'
 import { useGeometry } from '../composables/useGeometry'
 import { useGesture } from '../composables/useGesture'
@@ -159,9 +160,41 @@ const {
 
 const keyboardEnabled = computed(() => !!keyboard && (resizable || effectiveDraggable.value))
 
-const { onKeydown, onKeyup, onFocus, onBlur } = useKeyboard({
-  enabled: () => keyboardEnabled.value,
+const {
+  placement,
+  updatePlacement,
+  onKeydown: onToolbarKeydown,
+  contains: inToolbar,
+} = useToolbar({
+  root,
+  toolbar,
   active,
+  placement: () => toolbarPlacement,
+  gesturing: () => !!gesture.value,
+  direction: () => direction.value,
+  focusable: () => keyboardEnabled.value,
+})
+
+const { activate, deactivate, onClick, onPress, onFocus } = useActivation({
+  root,
+  active,
+  inToolbar,
+  ignoreOutside: () => ignoreOutside,
+  focusable: () => keyboardEnabled.value,
+  // Before the handles show: the direction may have changed while the element was inactive.
+  onActivate: geometry.measure,
+  emit,
+})
+
+const onPointerDown = (event: PointerEvent) => {
+  if (onPress(event)) startDrag(event)
+}
+
+const { onKeydown, onKeyup, onBlur } = useKeyboard({
+  enabled: () => keyboardEnabled.value,
+  active: () => active.value,
+  activate,
+  deactivate,
   mode: () => keyboardMode ?? (effectiveDraggable.value ? 'move' : 'resize'),
   step: () => keyboardStep,
   direction: () => direction.value,
@@ -197,36 +230,6 @@ const resizingHandle = computed(() =>
   gesture.value?.kind === 'resize' ? gesture.value.handle : null,
 )
 
-const {
-  placement,
-  updatePlacement,
-  onKeydown: onToolbarKeydown,
-} = useToolbar({
-  root,
-  toolbar,
-  active,
-  placement: () => toolbarPlacement,
-  gesturing: () => !!gesture.value,
-  direction: () => direction.value,
-  focusable: () => keyboardEnabled.value,
-})
-
-// The toolbar is part of the element for outside presses and focus, but not for gestures: events
-// from it are not stopped (other elements' outside handlers still see them), only ignored here.
-const isInToolbar = (target: EventTarget | null) =>
-  target instanceof Node && !!toolbar.value?.contains(target)
-
-// A click in the toolbar does not activate: a button there may just have deactivated the element.
-const onClick = (event: MouseEvent) => {
-  if (!isInToolbar(event.target)) active.value = true
-}
-
-const onPointerDown = (event: PointerEvent) => {
-  if (isInToolbar(event.target)) return
-  active.value = true
-  startDrag(event)
-}
-
 /**
  * Resizes to `size` like a gesture that ends at once (see `useGesture`), at the inline-end /
  * block-end edges like keyboard resizing.
@@ -237,38 +240,7 @@ const resizeTo = (size: ResizeToSize) => {
   void nextTick(updatePlacement)
 }
 
-const deactivate = () => {
-  active.value = false
-}
-
-const onOutsidePointerDown = (event: PointerEvent) => {
-  const target = event.target
-  if (!active.value || root.value?.contains(target as Node | null)) return
-  if (target instanceof Element && ignoreOutside?.(target)) return
-  active.value = false
-}
-
-// Focus coming back from the toolbar (e.g. as it hides) does not activate the element again.
-const onRootFocus = (event: FocusEvent) => {
-  if (!isInToolbar(event.relatedTarget)) onFocus()
-}
-
-watch(active, (isActive) => {
-  if (isActive) {
-    // Before the handles show: the direction may have changed while the element was inactive.
-    geometry.measure()
-    emit('activated')
-  } else {
-    // Before the toolbar hides: focus inside it would be lost to the document otherwise.
-    if (keyboardEnabled.value && isInToolbar(document.activeElement)) root.value?.focus()
-    emit('deactivated')
-  }
-})
-
 defineExpose({ resizeTo })
-
-onMounted(() => document.addEventListener('pointerdown', onOutsidePointerDown))
-onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutsidePointerDown))
 
 const visibleHandles = computed(() => {
   if (!resizable) return []
@@ -323,7 +295,7 @@ const handleClasses = (handle: PhysicalResizeHandle) => [
     @click="onClick"
     @pointerdown="onPointerDown"
     @dragstart.prevent
-    @focus="onRootFocus"
+    @focus="onFocus"
     @blur="onBlur"
     @keydown="onKeydown"
     @keyup="onKeyup"
