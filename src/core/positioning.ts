@@ -1,5 +1,13 @@
 import { getMatchedGuides, snapToGuides } from './guides'
-import type { ConstraintOptions, Guides, PhysicalResizeHandle, Point, Rect, Size } from './types'
+import type {
+  ConstraintOptions,
+  Guides,
+  PhysicalResizeHandle,
+  Point,
+  Rect,
+  ResizeMode,
+  Size,
+} from './types'
 
 type VerticalEdge = 't' | 'b' | null
 type HorizontalEdge = 'l' | 'r' | null
@@ -21,21 +29,8 @@ export interface ResizeInput {
   options: ConstraintOptions
   /** Size of the parent, required for `options.parent`. */
   parentSize: Size | null
-  /**
-   * Keep the edge opposite to the moving one in place by moving the rect when a `t` / `l` edge
-   * is dragged (the default). With `false` the rect never moves: `t` / `l` handles grow the size
-   * by the usual delta, and the element extends per its position in the layout — the policy for
-   * elements in document flow, whose position the browser owns.
-   * @default true
-   */
-  anchor?: boolean
-  /**
-   * The left and right edges move symmetrically, as for an element on a centred line in document
-   * flow: the width changes by twice the horizontal delta, so the dragged edge follows the
-   * pointer. Only meaningful with `anchor: false`.
-   * @default false
-   */
-  symmetric?: boolean
+  /** See {@link ResizeMode}. @default 'anchored' */
+  mode?: ResizeMode
 }
 
 /** Edge moved by the first / second letter of a handle; `m`iddle moves neither. */
@@ -260,15 +255,15 @@ const applyGrowth = (
   growX: number,
   growY: number,
   limits: ResizeLimits,
-  anchor: boolean | undefined,
+  mode: ResizeMode = 'anchored',
 ): Rect => {
   const w = edges.horizontal ? clamp(start.w + growX, limits.minWidth, limits.maxWidth) : start.w
   const h = edges.vertical ? clamp(start.h + growY, limits.minHeight, limits.maxHeight) : start.h
 
   return {
-    // The edge opposite to the moving one stays in place; without `anchor` the rect never moves.
-    x: anchor !== false && edges.horizontal === 'l' ? start.x + start.w - w : start.x,
-    y: anchor !== false && edges.vertical === 't' ? start.y + start.h - h : start.y,
+    // Anchored, the edge opposite to the moving one stays in place; otherwise the rect never moves.
+    x: mode === 'anchored' && edges.horizontal === 'l' ? start.x + start.w - w : start.x,
+    y: mode === 'anchored' && edges.vertical === 't' ? start.y + start.h - h : start.y,
     w,
     h,
   }
@@ -282,18 +277,17 @@ export const resizeRect = ({
   deltaY,
   options,
   parentSize,
-  anchor,
-  symmetric,
+  mode,
 }: ResizeInput): Rect => {
   const { aspectRatio, edges, limits } = prepareResize(handle, start, options, parentSize)
   const { growX, growY } = calculateGrowth(
     handle,
     edges,
-    symmetric ? 2 * deltaX : deltaX,
+    mode === 'symmetric' ? 2 * deltaX : deltaX,
     deltaY,
     aspectRatio,
   )
-  return applyGrowth(edges, start, growX, growY, limits, anchor)
+  return applyGrowth(edges, start, growX, growY, limits, mode)
 }
 
 export interface StepResizeInput {
@@ -310,8 +304,11 @@ export interface StepResizeInput {
   options: ConstraintOptions
   /** Size of the parent, required for `options.parent`. */
   parentSize: Size | null
-  /** See {@link ResizeInput.anchor}. @default true */
-  anchor?: boolean
+  /**
+   * See {@link ResizeMode}. A step changes the size by exactly its amount, so `symmetric` steps
+   * like `grow`. @default 'anchored'
+   */
+  mode?: ResizeMode
 }
 
 /** `next`, or `null` if it changes nothing or reached an unbounded limit (`Infinity` without a max). */
@@ -330,7 +327,7 @@ export const stepResizeRect = ({
   handle,
   options,
   parentSize,
-  anchor,
+  mode,
 }: StepResizeInput): Rect | null => {
   const { aspectRatio, edges, limits } = prepareResize(handle, start, options, parentSize)
   // With a locked ratio the stepped dimension drives the other.
@@ -340,7 +337,7 @@ export const stepResizeRect = ({
       : growW !== 0
         ? [growW, growW * aspectRatio]
         : [growH / aspectRatio, growH]
-  return settleStep(applyGrowth(edges, start, growX, growY, limits, anchor), start)
+  return settleStep(applyGrowth(edges, start, growX, growY, limits, mode), start)
 }
 
 export interface ResizeToInput extends Omit<StepResizeInput, 'growW' | 'growH'> {

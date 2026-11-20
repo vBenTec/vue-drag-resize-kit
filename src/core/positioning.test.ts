@@ -222,7 +222,7 @@ describe('resizeRect', () => {
     ).toEqual({ x: 90, y: 50, w: 110, h: 50 })
   })
 
-  describe('without anchoring', () => {
+  describe('in grow mode', () => {
     it.each([
       ['tl', { w: 90, h: 30 }],
       ['tm', { w: 100, h: 30 }],
@@ -233,7 +233,7 @@ describe('resizeRect', () => {
       ['bm', { w: 100, h: 70 }],
       ['br', { w: 110, h: 70 }],
     ] as const)('%s grows by the usual delta but never moves the rect', (handle, expected) => {
-      const result = resize({ handle, deltaX: 10, deltaY: 20, anchor: false })
+      const result = resize({ handle, deltaX: 10, deltaY: 20, mode: 'grow' })
       // Same size as the anchored resize, position untouched.
       expect(result).toEqual({ x: start.x, y: start.y, ...expected })
       expect(resize({ handle, deltaX: 10, deltaY: 20 })).toMatchObject(expected)
@@ -242,13 +242,13 @@ describe('resizeRect', () => {
     it('keeps the position for aspect-locked edge handles that act as corners', () => {
       const options = { lockAspectRatio: true }
       // `tm` / `ml` behave like `tl` and would normally move both x and y.
-      expect(resize({ handle: 'tm', deltaY: -10, options, anchor: false })).toEqual({
+      expect(resize({ handle: 'tm', deltaY: -10, options, mode: 'grow' })).toEqual({
         x: 100,
         y: 50,
         w: 120,
         h: 60,
       })
-      expect(resize({ handle: 'ml', deltaX: -20, options, anchor: false })).toEqual({
+      expect(resize({ handle: 'ml', deltaX: -20, options, mode: 'grow' })).toEqual({
         x: 100,
         y: 50,
         w: 120,
@@ -256,7 +256,7 @@ describe('resizeRect', () => {
       })
     })
 
-    it('still compensates when anchor is omitted', () => {
+    it('still compensates when the mode is omitted', () => {
       expect(resize({ handle: 'tl', deltaX: 10, deltaY: 20 })).toEqual({
         x: 110,
         y: 70,
@@ -331,7 +331,7 @@ describe('resizeRect with symmetric edges', () => {
     ['br', 10, { w: 120, h: 70 }],
     ['tl', -10, { w: 120, h: 30 }],
   ] as const)('%s changes the width by twice the delta', (handle, deltaX, expected) => {
-    expect(resize({ handle, deltaX, deltaY: 20, anchor: false, symmetric: true })).toEqual({
+    expect(resize({ handle, deltaX, deltaY: 20, mode: 'symmetric' })).toEqual({
       x: start.x,
       y: start.y,
       ...expected,
@@ -339,25 +339,26 @@ describe('resizeRect with symmetric edges', () => {
   })
 
   it('leaves top / bottom handles alone', () => {
-    expect(
-      resize({ handle: 'bm', deltaX: 10, deltaY: 20, anchor: false, symmetric: true }),
-    ).toEqual({ ...start, h: 70 })
+    expect(resize({ handle: 'bm', deltaX: 10, deltaY: 20, mode: 'symmetric' })).toEqual({
+      ...start,
+      h: 70,
+    })
   })
 
   it('keeps the ratio and the limits', () => {
     const options = { lockAspectRatio: true, maxW: 150 }
-    expect(resize({ handle: 'mr', deltaX: 10, options, anchor: false, symmetric: true })).toEqual({
+    expect(resize({ handle: 'mr', deltaX: 10, options, mode: 'symmetric' })).toEqual({
       ...start,
       w: 120,
       h: 60,
     })
-    expect(resize({ handle: 'mr', deltaX: 40, options, anchor: false, symmetric: true })).toEqual({
+    expect(resize({ handle: 'mr', deltaX: 40, options, mode: 'symmetric' })).toEqual({
       ...start,
       w: 150,
       h: 75,
     })
     // Driven by the vertical movement, as without symmetric edges.
-    expect(resize({ handle: 'bm', deltaY: 10, options, anchor: false, symmetric: true })).toEqual({
+    expect(resize({ handle: 'bm', deltaY: 10, options, mode: 'symmetric' })).toEqual({
       ...start,
       w: 120,
       h: 60,
@@ -375,7 +376,7 @@ describe('stepResizeRect', () => {
   it('moves the left and bottom edges with bl, keeping the right edge in absolute layout', () => {
     expect(step({ handle: 'bl', growW: 5 })).toEqual({ ...start, x: 95, w: 105 })
     expect(step({ handle: 'bl', growH: 5 })).toEqual({ ...start, h: 55 })
-    expect(step({ handle: 'bl', growW: 5, anchor: false })).toEqual({ ...start, w: 105 })
+    expect(step({ handle: 'bl', growW: 5, mode: 'grow' })).toEqual({ ...start, w: 105 })
   })
 
   it('applies the constraints', () => {

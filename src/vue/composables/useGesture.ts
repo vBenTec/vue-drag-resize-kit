@@ -9,6 +9,7 @@ import type {
   Direction,
   PhysicalResizeHandle,
   Rect,
+  ResizeMode,
   Size,
 } from '../../core/types'
 import type { ContainerMember, DraggableResizableEmit, ResizeToSize } from '../types'
@@ -24,10 +25,8 @@ export interface UseGestureOptions {
   constraints: Readonly<Ref<ConstraintOptions>>
   draggable: () => boolean
   resizable: () => boolean
-  /** Whether resizing from a `t` / `l` edge moves the rect to keep the opposite edge in place. */
-  anchor: () => boolean
-  /** Whether both horizontal edges move while resizing (a centred line in flow layout). */
-  symmetric: () => boolean
+  /** How a resize moves the rect. */
+  resizeMode: () => ResizeMode
   /** Membership in a `DraggableContainer`, for snapping while dragging. */
   member: ContainerMember | null
   emit: DraggableResizableEmit
@@ -46,8 +45,7 @@ export const useGesture = ({
   constraints,
   draggable,
   resizable,
-  anchor,
-  symmetric,
+  resizeMode,
   member,
   emit,
 }: UseGestureOptions) => {
@@ -150,8 +148,7 @@ export const useGesture = ({
         deltaY,
         options: constraints.value,
         parentSize: parentSize.value,
-        anchor: anchor(),
-        symmetric: symmetric(),
+        mode: resizeMode(),
       }),
     )
   }
@@ -184,7 +181,7 @@ export const useGesture = ({
         handle,
         options: constraints.value,
         parentSize: parentSize.value,
-        anchor: anchor(),
+        mode: resizeMode(),
       })
     })
 
@@ -204,7 +201,7 @@ export const useGesture = ({
         handle,
         options: constraints.value,
         parentSize: parentSize.value,
-        anchor: anchor(),
+        mode: resizeMode(),
       })
       return next && { gesture: { kind: 'resize', handle }, rect: next }
     })
