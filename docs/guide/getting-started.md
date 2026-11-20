@@ -30,6 +30,8 @@ yarn add vue-drag-resize-kit
 
 Requires Vue 3.5 or newer. The package is ESM only.
 
+Using Nuxt? See [Nuxt](./ssr#nuxt) for where the stylesheet goes.
+
 ## Usage
 
 <DemoFrame><Basic /></DemoFrame>
