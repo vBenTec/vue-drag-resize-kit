@@ -3,7 +3,8 @@ import { computed, nextTick, onBeforeUnmount, onMounted, useId, useTemplateRef, 
 
 import { isOnAnchoredEdge } from '../../core/direction'
 import { getDefaultHandles, resolveHandles } from '../../core/handles'
-import type { ConstraintOptions, PhysicalResizeHandle, Rect } from '../../core/types'
+import { resolveLayout } from '../../core/layout'
+import type { PhysicalResizeHandle, Rect } from '../../core/types'
 import { useContainerMember } from '../composables/useContainer'
 import { useGeometry } from '../composables/useGeometry'
 import { useGesture } from '../composables/useGesture'
@@ -84,17 +85,17 @@ const root = useTemplateRef<HTMLDivElement>('root')
 const toolbar = useTemplateRef<HTMLDivElement>('toolbar')
 const flow = computed(() => layout === 'flow')
 
-// Other elements in a `DraggableContainer` snap to this one, whether or not it can be dragged. In
-// flow, x / y are ignored, so the snap target is where the browser placed the element: its offset
-// in the nearest positioned ancestor, which is also the box absolute siblings' x / y refer to.
-// The offset is in whole px but untransformed like x / y, which a bounding rect would not be.
+// Other elements in a `DraggableContainer` snap to this one, whether or not it can be dragged.
+// Unpositioned (flow), x / y are ignored, so the snap target is where the browser placed the
+// element: its offset in the nearest positioned ancestor, which is also the box absolute siblings'
+// x / y refer to. The offset is in whole px but untransformed like x / y, which a bounding rect
+// would not be.
 const member = useContainerMember(() => {
   const el = root.value
-  return flow.value && el ? { ...rect.value, x: el.offsetLeft, y: el.offsetTop } : rect.value
+  return !resolved.value.positioned && el
+    ? { ...rect.value, x: el.offsetLeft, y: el.offsetTop }
+    : rect.value
 })
-
-// In flow the browser owns the position, so dragging is silently inert.
-const effectiveDraggable = computed(() => draggable && !flow.value)
 
 // In flow, a dimension whose model is 0 renders at its content's size, synced into the model. The
 // `boundary` element's content box caps the size, folded into maxW / maxH below. Logical handles
@@ -105,30 +106,35 @@ const geometry = useGeometry({
   flowAnchor: () => flowAnchor,
   boundary: () => boundary,
   // The parent's size is needed for `parent` bounds and for snapping to the parent's edges.
-  measureParent: () => (!flow.value && !!parent) || member !== null,
+  measureParent: () => !!parent || member !== null,
   w,
   h,
 })
 const { direction, anchoredEdge } = geometry
 
-const constraints = computed<ConstraintOptions>(() => {
-  const cap = geometry.boundarySize.value
-  return {
-    disabledX,
-    disabledY,
-    disabledW,
-    disabledH,
-    minW,
-    minH,
-    maxW: cap ? Math.min(maxW ?? Infinity, cap.width) : maxW,
-    // In flow only the width is capped: documents grow with their content (aspect lock still
-    // bounds the height through the width).
-    maxH: cap && !flow.value ? Math.min(maxH ?? Infinity, cap.height) : maxH,
-    // `parent` measures the immediate wrapper and reads x / y, neither of which applies in flow.
-    parent: flow.value ? false : parent,
-    lockAspectRatio,
-  }
-})
+// What the layout mode makes of the props: in flow the browser owns the position.
+const resolved = computed(() =>
+  resolveLayout({
+    layout,
+    draggable,
+    constraints: {
+      disabledX,
+      disabledY,
+      disabledW,
+      disabledH,
+      minW,
+      minH,
+      maxW,
+      maxH,
+      parent,
+      lockAspectRatio,
+    },
+    boundary: geometry.boundarySize.value,
+    anchoredEdge: anchoredEdge.value,
+  }),
+)
+const constraints = computed(() => resolved.value.constraints)
+const effectiveDraggable = computed(() => resolved.value.draggable)
 
 const {
   gesture,
@@ -146,8 +152,7 @@ const {
   constraints,
   draggable: () => effectiveDraggable.value,
   resizable: () => resizable,
-  anchor: () => !flow.value,
-  symmetric: () => anchoredEdge.value === 'center',
+  resizeMode: () => resolved.value.resizeMode,
   member,
   emit,
 })
@@ -278,8 +283,8 @@ const visibleHandles = computed(() => {
 
 const style = computed(() => ({
   // In flow the browser owns the position, and a natural dimension has no inline size either.
-  left: flow.value ? undefined : `${x.value}px`,
-  top: flow.value ? undefined : `${y.value}px`,
+  left: resolved.value.positioned ? `${x.value}px` : undefined,
+  top: resolved.value.positioned ? `${y.value}px` : undefined,
   width: flow.value && geometry.naturalW.value ? undefined : `${w.value}px`,
   height: flow.value && geometry.naturalH.value ? undefined : `${h.value}px`,
   // Without this the browser claims touch gestures for scrolling and cancels the pointer.
