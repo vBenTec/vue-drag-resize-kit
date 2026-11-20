@@ -160,7 +160,7 @@ const { onKeydown, onKeyup, onFocus, onBlur } = useKeyboard({
   mode: () => keyboardMode ?? (effectiveDraggable.value ? 'move' : 'resize'),
   step: () => keyboardStep,
   direction: () => direction.value,
-  refreshDirection,
+  refresh: () => refreshBeforeResize(),
   stepDrag,
   stepResize,
   endSteps,
@@ -222,8 +222,8 @@ const onPointerDown = (event: PointerEvent) => {
   startDrag(event)
 }
 
-// Before a resize: its start rect (and a locked aspect ratio) must never be measured stale, nor the
-// flow anchor it grows by.
+// Before a resize (a key sequence too): its start rect (and a locked aspect ratio) must never be
+// measured stale, nor the flow anchor it grows by.
 const refreshBeforeResize = () => {
   naturalSize.refresh()
   boundarySize.refresh()

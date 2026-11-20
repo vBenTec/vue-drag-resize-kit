@@ -12,8 +12,8 @@ export interface UseKeyboardOptions {
   /** Distance of one step (px); `Shift` multiplies it by 10. */
   step: () => number
   direction: () => Direction
-  /** Re-reads the direction, before a sequence starts. */
-  refreshDirection: () => void
+  /** Re-measures the element (direction, size, boundary), before a sequence starts. */
+  refresh: () => void
   stepDrag: (deltaX: number, deltaY: number) => void
   stepResize: (growW: number, growH: number, handle: 'bl' | 'br') => void
   endSteps: () => void
@@ -40,7 +40,7 @@ export const useKeyboard = ({
   mode,
   step,
   direction,
-  refreshDirection,
+  refresh,
   stepDrag,
   stepResize,
   endSteps,
@@ -53,13 +53,16 @@ export const useKeyboard = ({
     endSteps()
   }
 
-  /** Performs `key`; `false` if it has no meaning in the current mode. */
+  /** Whether `key` has a meaning in the current mode. */
+  const handles = (key: string) =>
+    !!ARROWS[key] || (mode() === 'resize' && (key === 'Home' || key === 'End'))
+
+  /** Performs `key`, one that `handles`. */
   const perform = (key: string, amount: number) => {
     const arrow = ARROWS[key]
     if (mode() === 'move') {
-      if (!arrow) return false
-      stepDrag(arrow[0] * amount, arrow[1] * amount)
-      return true
+      if (arrow) stepDrag(arrow[0] * amount, arrow[1] * amount)
+      return
     }
 
     // The width changes at the inline-end edge.
@@ -67,11 +70,9 @@ export const useKeyboard = ({
     const handle = getInlineEndCorner(direction())
     if (key === 'Home') stepResize(-Infinity, 0, handle)
     else if (key === 'End') stepResize(Infinity, 0, handle)
-    else if (!arrow) return false
     // The width grows towards the inline end: rightwards in LTR, leftwards in RTL.
-    else if (arrow[0]) stepResize((rtl ? -arrow[0] : arrow[0]) * amount, 0, handle)
-    else stepResize(0, arrow[1] * amount, handle)
-    return true
+    else if (arrow?.[0]) stepResize((rtl ? -arrow[0] : arrow[0]) * amount, 0, handle)
+    else if (arrow) stepResize(0, arrow[1] * amount, handle)
   }
 
   const onKeydown = (event: KeyboardEvent) => {
@@ -89,8 +90,9 @@ export const useKeyboard = ({
 
     // Arrows of an inactive element scroll the page as usual; shortcuts are left alone.
     if (!active.value || event.altKey || event.ctrlKey || event.metaKey) return
-    if (pressed.size === 0) refreshDirection()
-    if (!perform(event.key, step() * (event.shiftKey ? 10 : 1))) return
+    if (!handles(event.key)) return
+    if (pressed.size === 0) refresh()
+    perform(event.key, step() * (event.shiftKey ? 10 : 1))
     pressed.add(event.key)
     event.preventDefault()
   }
