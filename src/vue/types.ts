@@ -1,9 +1,17 @@
-import type { EmitFn, ShortEmitsToObject } from 'vue'
+import type { EmitFn, Ref, ShallowRef, ShortEmitsToObject } from 'vue'
 
-import type { FlowAnchor } from '../core/direction'
-import type { LayoutMode } from '../core/layout'
-import type { Guides, Point, Rect, ResizeHandle, Size } from '../core/types'
-import type { BoundaryTarget } from './composables/useBoundarySize'
+import type {
+  ConstraintOptions,
+  Direction,
+  FlowAnchor,
+  Guides,
+  LayoutMode,
+  Point,
+  Rect,
+  ResizeHandle,
+  ResizeMode,
+  Size,
+} from '../core/types'
 
 /** What the arrow keys do with `keyboard` on: move the element, or resize it. */
 export type KeyboardMode = 'move' | 'resize'
@@ -209,4 +217,113 @@ export interface SnapSession {
   publish: (matched: Guides | null) => void
   /** Hides the matched guides. */
   end: () => void
+}
+
+/**
+ * The element whose content box caps the size: a CSS selector matched against the component's
+ * ancestors (via `closest`), the element itself, a ref to it, or a getter.
+ */
+export type BoundaryTarget =
+  | string
+  | HTMLElement
+  | Ref<HTMLElement | null>
+  | (() => HTMLElement | null)
+
+/** @internal Options of `useGeometry`. */
+export interface UseGeometryOptions {
+  root: Readonly<ShallowRef<HTMLElement | null>>
+  /** Flow layout: natural sizing applies and the flow anchor is resolved. */
+  flow: () => boolean
+  flowAnchor: () => FlowAnchor
+  boundary: () => BoundaryTarget | undefined
+  /** Whether the parent is measured, for `parent` bounds and snapping. */
+  measureParent: () => boolean
+  w: Ref<number>
+  h: Ref<number>
+}
+
+/** @internal Options of `useGesture`. */
+export interface UseGestureOptions {
+  rect: Ref<Rect>
+  /** Inner size of the parent, for `parent` bounds and snapping. */
+  parentSize: Readonly<Ref<Size | null>>
+  /** The text direction: `resizeTo` changes the size at the inline-end edge. */
+  direction: () => Direction
+  /** Re-measures the element, before a gesture begins. */
+  measure: () => void
+  constraints: Readonly<Ref<ConstraintOptions>>
+  draggable: () => boolean
+  resizable: () => boolean
+  /** How a resize moves the rect. */
+  resizeMode: () => ResizeMode
+  /** Membership in a `DraggableContainer`, for snapping while dragging. */
+  member: ContainerMember | null
+  emit: DraggableResizableEmit
+}
+
+/** @internal Options of `useKeyboard`. */
+export interface UseKeyboardOptions {
+  /** Whether keyboard interaction is on. */
+  enabled: () => boolean
+  active: () => boolean
+  /** Asks to activate (`Enter`) or deactivate (`Escape`) the element. */
+  activate: () => void
+  deactivate: () => void
+  mode: () => KeyboardMode
+  /** Distance of one step (px); `Shift` multiplies it by 10. */
+  step: () => number
+  direction: () => Direction
+  /** Re-measures the element (direction, size, boundary), before a sequence starts. */
+  refresh: () => void
+  stepDrag: (deltaX: number, deltaY: number) => void
+  stepResize: (growW: number, growH: number, handle: 'bl' | 'br') => void
+  endSteps: () => void
+}
+
+/** @internal Options of `useActivation`. */
+export interface UseActivationOptions {
+  root: Readonly<ShallowRef<HTMLElement | null>>
+  active: Ref<boolean>
+  /**
+   * Whether `target` is in the toolbar, which counts as part of the element for outside presses
+   * and focus, but not for presses that activate it or start a gesture.
+   */
+  inToolbar: (target: EventTarget | null) => boolean
+  /** Presses outside the element that keep it active. */
+  ignoreOutside: () => ((target: Element) => boolean) | undefined
+  /** Whether the element is focusable (`keyboard`): focus activates it. */
+  focusable: () => boolean
+  /** Runs when the element turns active, before it shows as such. */
+  onActivate: () => void
+  emit: DraggableResizableEmit
+}
+
+/** @internal Options of `useToolbar`. */
+export interface UseToolbarOptions {
+  root: Readonly<ShallowRef<HTMLElement | null>>
+  /** The toolbar wrapper; `null` without the slot. */
+  toolbar: Readonly<ShallowRef<HTMLElement | null>>
+  active: Ref<boolean>
+  placement: () => ToolbarPlacement
+  /** Whether a gesture is running; `auto` is resolved again once it ends. */
+  gesturing: () => boolean
+  direction: () => Direction
+  /** Whether the root is focusable (`keyboard`), so `Escape` can move focus back to it. */
+  focusable: () => boolean
+}
+
+/** @internal Options of `useDirection`. */
+export interface UseDirectionOptions {
+  root: Readonly<ShallowRef<HTMLElement | null>>
+  /** The anchor to resolve; `none` outside flow layout. */
+  flowAnchor: () => FlowAnchor
+}
+
+/** @internal Options of `useNaturalSize`. */
+export interface UseNaturalSizeOptions {
+  root: Readonly<ShallowRef<HTMLElement | null>>
+  /** Natural sizing only applies in flow layout. */
+  enabled: () => boolean
+  w: Ref<number>
+  h: Ref<number>
 }

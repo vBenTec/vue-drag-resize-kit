@@ -1,37 +1,20 @@
 import { getMatchedGuides, snapToGuides } from './guides'
 import type {
   ConstraintOptions,
-  Guides,
+  DragInput,
+  DragResult,
+  HorizontalEdge,
   PhysicalResizeHandle,
   Point,
   Rect,
+  ResizeEdges,
+  ResizeInput,
   ResizeMode,
+  ResizeToInput,
   Size,
+  StepResizeInput,
+  VerticalEdge,
 } from './types'
-
-type VerticalEdge = 't' | 'b' | null
-type HorizontalEdge = 'l' | 'r' | null
-
-export interface ResizeEdges {
-  /** Edge that follows the pointer vertically, `null` if the height does not change. */
-  vertical: VerticalEdge
-  /** Edge that follows the pointer horizontally, `null` if the width does not change. */
-  horizontal: HorizontalEdge
-}
-
-export interface ResizeInput {
-  handle: PhysicalResizeHandle
-  /** Rect at the moment the resize started. */
-  start: Rect
-  /** Pointer movement since the resize started. */
-  deltaX: number
-  deltaY: number
-  options: ConstraintOptions
-  /** Size of the parent, required for `options.parent`. */
-  parentSize: Size | null
-  /** See {@link ResizeMode}. @default 'anchored' */
-  mode?: ResizeMode
-}
 
 /** Edge moved by the first / second letter of a handle; `m`iddle moves neither. */
 const VERTICAL_EDGES: Partial<Record<string, VerticalEdge>> = { t: 't', b: 'b' }
@@ -83,24 +66,6 @@ const getPositionBounds = (
   return bounds
     ? { minX: 0, minY: 0, maxX: bounds.width - w, maxY: bounds.height - h }
     : { minX: -Infinity, minY: -Infinity, maxX: Infinity, maxY: Infinity }
-}
-
-export interface DragInput {
-  /** Rect at the moment the drag started. */
-  start: Rect
-  /** Pointer movement since the drag started. */
-  deltaX: number
-  deltaY: number
-  options: ConstraintOptions
-  /** Size of the parent, required for `options.parent`. */
-  parentSize: Size | null
-  /** Guides to snap to, `null` to not snap. */
-  guides: Guides | null
-}
-
-export interface DragResult extends Point {
-  /** Guides the element is aligned with at the new position, `null` without guides. */
-  matchedGuides: Guides | null
 }
 
 /**
@@ -290,27 +255,6 @@ export const resizeRect = ({
   return applyGrowth(edges, start, growX, growY, limits, mode)
 }
 
-export interface StepResizeInput {
-  /** Rect before the step. */
-  start: Rect
-  /**
-   * How much the width / the height should grow (negative to shrink), one of them `0`. With a
-   * locked aspect ratio the other dimension follows. `±Infinity` resizes to the min / max size.
-   */
-  growW: number
-  growH: number
-  /** The bottom corner whose edges move: `br` grows the width to the right, `bl` to the left. */
-  handle: 'bl' | 'br'
-  options: ConstraintOptions
-  /** Size of the parent, required for `options.parent`. */
-  parentSize: Size | null
-  /**
-   * See {@link ResizeMode}. A step changes the size by exactly its amount, so `symmetric` steps
-   * like `grow`. @default 'anchored'
-   */
-  mode?: ResizeMode
-}
-
 /** `next`, or `null` if it changes nothing or reached an unbounded limit (`Infinity` without a max). */
 const settleStep = (next: Rect, start: Rect): Rect | null =>
   !Number.isFinite(next.w) || !Number.isFinite(next.h) || isSameRect(next, start) ? null : next
@@ -338,13 +282,6 @@ export const stepResizeRect = ({
         ? [growW, growW * aspectRatio]
         : [growH / aspectRatio, growH]
   return settleStep(applyGrowth(edges, start, growX, growY, limits, mode), start)
-}
-
-export interface ResizeToInput extends Omit<StepResizeInput, 'growW' | 'growH'> {
-  /**
-   * The size to resize to. `±Infinity` is the max / min size; a missing or `NaN` dimension stays.
-   */
-  size: { w?: number; h?: number }
 }
 
 /** Whether a dimension is given: `NaN` is ignored like a missing one. */

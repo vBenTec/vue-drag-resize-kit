@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveLayout, type LayoutInput } from './layout'
+import { resolveLayout } from './layout'
+import type { LayoutInput } from './types'
 
 const resolve = (input: Partial<LayoutInput>) =>
   resolveLayout({

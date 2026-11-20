@@ -1,23 +1,6 @@
-import { onBeforeUnmount, onMounted, watch, type Ref, type ShallowRef } from 'vue'
+import { onBeforeUnmount, onMounted, watch } from 'vue'
 
-import type { DraggableResizableEmit } from '../types'
-
-export interface UseActivationOptions {
-  root: Readonly<ShallowRef<HTMLElement | null>>
-  active: Ref<boolean>
-  /**
-   * Whether `target` is in the toolbar, which counts as part of the element for outside presses
-   * and focus, but not for presses that activate it or start a gesture.
-   */
-  inToolbar: (target: EventTarget | null) => boolean
-  /** Presses outside the element that keep it active. */
-  ignoreOutside: () => ((target: Element) => boolean) | undefined
-  /** Whether the element is focusable (`keyboard`): focus activates it. */
-  focusable: () => boolean
-  /** Runs when the element turns active, before it shows as such. */
-  onActivate: () => void
-  emit: DraggableResizableEmit
-}
+import type { UseActivationOptions } from '../types'
 
 /**
  * Whether the element is active, and everything that changes it: a press or click on the element

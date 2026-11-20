@@ -1,24 +1,5 @@
 import { getInlineEndCorner } from '../../core/direction'
-import type { Direction } from '../../core/types'
-import type { KeyboardMode } from '../types'
-
-export interface UseKeyboardOptions {
-  /** Whether keyboard interaction is on. */
-  enabled: () => boolean
-  active: () => boolean
-  /** Asks to activate (`Enter`) or deactivate (`Escape`) the element. */
-  activate: () => void
-  deactivate: () => void
-  mode: () => KeyboardMode
-  /** Distance of one step (px); `Shift` multiplies it by 10. */
-  step: () => number
-  direction: () => Direction
-  /** Re-measures the element (direction, size, boundary), before a sequence starts. */
-  refresh: () => void
-  stepDrag: (deltaX: number, deltaY: number) => void
-  stepResize: (growW: number, growH: number, handle: 'bl' | 'br') => void
-  endSteps: () => void
-}
+import type { UseKeyboardOptions } from '../types'
 
 /** Physical direction of each arrow key. */
 const ARROWS: Partial<Record<string, [x: number, y: number]>> = {

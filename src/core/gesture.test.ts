@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { createGestures, type Gesture, type GesturePhase } from './gesture'
-import type { Rect } from './types'
+import { createGestures } from './gesture'
+import type { Gesture, GesturePhase, Rect } from './types'
 
 const start: Rect = { x: 0, y: 0, w: 100, h: 50 }
 const drag: Gesture = { kind: 'drag' }

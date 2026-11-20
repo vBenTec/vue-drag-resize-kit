@@ -1,14 +1,7 @@
-import { onWatcherCleanup, readonly, shallowRef, watch, type Ref, type ShallowRef } from 'vue'
+import { onWatcherCleanup, readonly, shallowRef, watch } from 'vue'
 
 import type { Size } from '../../core/types'
-
-export interface UseNaturalSizeOptions {
-  root: Readonly<ShallowRef<HTMLElement | null>>
-  /** Natural sizing only applies in flow layout. */
-  enabled: () => boolean
-  w: Ref<number>
-  h: Ref<number>
-}
+import type { UseNaturalSizeOptions } from '../types'
 
 /** Whether a model write turns its dimension natural / explicit; `null` for a synced echo. */
 const classify = (value: number, lastSynced: number | null): boolean | null =>
