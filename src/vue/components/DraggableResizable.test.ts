@@ -8,6 +8,7 @@ import {
   dragBy,
   handleNames,
   handleOf,
+  key,
   mountElement,
   pointer,
   rectOf,
@@ -490,6 +491,18 @@ describe('natural sizing (flow)', () => {
     expect(wrapper.emitted('update:w')).toHaveLength(writes)
   })
 
+  it('starts a key sequence from a fresh measurement', async () => {
+    const { wrapper } = mountNatural({ keyboard: true })
+    setMeasuredSize(wrapper.element, 345.5, 123.25)
+
+    key(wrapper.element, 'keydown', 'ArrowRight')
+    key(wrapper.element, 'keyup', 'ArrowRight')
+    await nextTick()
+
+    expect(wrapper.emitted('resize-start')).toEqual([[{ x: 0, y: 0, w: 345.5, h: 123.25 }]])
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([346.5])
+  })
+
   it('becomes natural again when a dimension is written back to 0', async () => {
     const { wrapper, renderAt } = mountNatural()
     setMeasuredSize(wrapper.element, 345.5, 123.25)
@@ -607,6 +620,18 @@ describe('boundary', () => {
 
     await dragBy(handle(wrapper, 'br'), 10, 0)
     expect(wrapper.emitted('update:w')?.at(-1)).toEqual([260])
+  })
+
+  it('applies a shrunken boundary at the next key sequence', async () => {
+    const { wrapper, editor } = mountWithBoundary({ keyboard: true, draggable: false })
+
+    // The boundary shrinks to an 80px content box while no observer reports it.
+    setInnerSize(editor, 120, 400)
+    key(wrapper.element, 'keydown', 'ArrowRight')
+    key(wrapper.element, 'keyup', 'ArrowRight')
+    await nextTick()
+
+    expect(wrapper.emitted('update:w')?.at(-1)).toEqual([80])
   })
 
   it('lets minW win over a smaller cap', async () => {

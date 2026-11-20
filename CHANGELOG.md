@@ -6,6 +6,12 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+### Fixed
+
+- A keyboard resize sequence now re-measures the element before its first step, like a pointer
+  resize: it syncs a natural size in flow layout first and respects a `boundary` that shrank since
+  the last measurement, also where no `ResizeObserver` reported the change.
+
 ## 1.3.0 — 2026-11-18
 
 Adds a toolbar slot with `resizeTo` for controls that act on the element, and a documentation
