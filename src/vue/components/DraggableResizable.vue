@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, useId, useTemplateRef, watch } from 'vue'
 
-import { getInlineEndCorner, isOnAnchoredEdge } from '../../core/direction'
+import { isOnAnchoredEdge } from '../../core/direction'
 import { getDefaultHandles, resolveHandles } from '../../core/handles'
 import type { ConstraintOptions, PhysicalResizeHandle, Rect } from '../../core/types'
-import { useBoundarySize } from '../composables/useBoundarySize'
 import { useContainerMember } from '../composables/useContainer'
-import { useDirection } from '../composables/useDirection'
+import { useGeometry } from '../composables/useGeometry'
 import { useGesture } from '../composables/useGesture'
 import { useKeyboard } from '../composables/useKeyboard'
-import { useNaturalSize } from '../composables/useNaturalSize'
 import { useToolbar } from '../composables/useToolbar'
 import type {
   DraggableResizableEmits,
@@ -98,13 +96,23 @@ const member = useContainerMember(() => {
 // In flow the browser owns the position, so dragging is silently inert.
 const effectiveDraggable = computed(() => draggable && !flow.value)
 
-// In flow, a dimension whose model is 0 renders at its content's size, synced into the model.
-const naturalSize = useNaturalSize({ root, enabled: () => flow.value, w, h })
-// The `boundary` element's content box caps the size, folded into maxW / maxH below.
-const boundarySize = useBoundarySize(root, () => boundary)
+// In flow, a dimension whose model is 0 renders at its content's size, synced into the model. The
+// `boundary` element's content box caps the size, folded into maxW / maxH below. Logical handles
+// and the flow anchor depend on the text direction, read from the computed styles.
+const geometry = useGeometry({
+  root,
+  flow: () => flow.value,
+  flowAnchor: () => flowAnchor,
+  boundary: () => boundary,
+  // The parent's size is needed for `parent` bounds and for snapping to the parent's edges.
+  measureParent: () => (!flow.value && !!parent) || member !== null,
+  w,
+  h,
+})
+const { direction, anchoredEdge } = geometry
 
 const constraints = computed<ConstraintOptions>(() => {
-  const cap = boundarySize.size.value
+  const cap = geometry.boundarySize.value
   return {
     disabledX,
     disabledY,
@@ -122,16 +130,6 @@ const constraints = computed<ConstraintOptions>(() => {
   }
 })
 
-// Logical handles and the flow anchor depend on the text direction, read from the computed styles.
-const {
-  direction,
-  anchoredEdge,
-  refresh: refreshDirection,
-} = useDirection({
-  root,
-  flowAnchor: () => (flow.value ? flowAnchor : 'none'),
-})
-
 const {
   gesture,
   startDrag,
@@ -141,8 +139,10 @@ const {
   endSteps,
   resizeTo: resizeToCorner,
 } = useGesture({
-  root,
   rect,
+  parentSize: geometry.parentSize,
+  direction: () => direction.value,
+  measure: geometry.measure,
   constraints,
   draggable: () => effectiveDraggable.value,
   resizable: () => resizable,
@@ -160,7 +160,8 @@ const { onKeydown, onKeyup, onFocus, onBlur } = useKeyboard({
   mode: () => keyboardMode ?? (effectiveDraggable.value ? 'move' : 'resize'),
   step: () => keyboardStep,
   direction: () => direction.value,
-  refresh: () => refreshBeforeResize(),
+  // Before a sequence: the arrow keys map to the current direction.
+  refresh: geometry.measure,
   stepDrag,
   stepResize,
   endSteps,
@@ -218,21 +219,7 @@ const onClick = (event: MouseEvent) => {
 const onPointerDown = (event: PointerEvent) => {
   if (isInToolbar(event.target)) return
   active.value = true
-  boundarySize.refresh()
   startDrag(event)
-}
-
-// Before a resize (a key sequence too): its start rect (and a locked aspect ratio) must never be
-// measured stale, nor the flow anchor it grows by.
-const refreshBeforeResize = () => {
-  naturalSize.refresh()
-  boundarySize.refresh()
-  refreshDirection()
-}
-
-const onHandlePointerDown = (event: PointerEvent, handle: PhysicalResizeHandle) => {
-  refreshBeforeResize()
-  startResize(event, handle)
 }
 
 /**
@@ -240,8 +227,7 @@ const onHandlePointerDown = (event: PointerEvent, handle: PhysicalResizeHandle) 
  * block-end edges like keyboard resizing.
  */
 const resizeTo = (size: ResizeToSize) => {
-  refreshBeforeResize()
-  resizeToCorner(size, getInlineEndCorner(direction.value))
+  resizeToCorner(size)
   // Once a controlled model has followed.
   void nextTick(updatePlacement)
 }
@@ -265,7 +251,7 @@ const onRootFocus = (event: FocusEvent) => {
 watch(active, (isActive) => {
   if (isActive) {
     // Before the handles show: the direction may have changed while the element was inactive.
-    refreshDirection()
+    geometry.measure()
     emit('activated')
   } else {
     // Before the toolbar hides: focus inside it would be lost to the document otherwise.
@@ -294,8 +280,8 @@ const style = computed(() => ({
   // In flow the browser owns the position, and a natural dimension has no inline size either.
   left: flow.value ? undefined : `${x.value}px`,
   top: flow.value ? undefined : `${y.value}px`,
-  width: flow.value && naturalSize.naturalW.value ? undefined : `${w.value}px`,
-  height: flow.value && naturalSize.naturalH.value ? undefined : `${h.value}px`,
+  width: flow.value && geometry.naturalW.value ? undefined : `${w.value}px`,
+  height: flow.value && geometry.naturalH.value ? undefined : `${h.value}px`,
   // Without this the browser claims touch gestures for scrolling and cancels the pointer.
   touchAction: effectiveDraggable.value || resizable ? 'none' : undefined,
 }))
@@ -366,7 +352,7 @@ const handleClasses = (handle: PhysicalResizeHandle) => [
       :class="handleClasses(handle)"
       :data-handle="handle"
       aria-hidden="true"
-      @pointerdown.stop="onHandlePointerDown($event, handle)"
+      @pointerdown.stop="startResize($event, handle)"
     />
   </div>
 </template>
