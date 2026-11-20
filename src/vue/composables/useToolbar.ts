@@ -130,5 +130,9 @@ export const useToolbar = ({
     event.preventDefault()
   }
 
-  return { placement, updatePlacement, onKeydown }
+  /** Whether `target` is in the toolbar. */
+  const contains = (target: EventTarget | null) =>
+    target instanceof Node && !!toolbar.value?.contains(target)
+
+  return { placement, updatePlacement, onKeydown, contains }
 }
