@@ -19,7 +19,8 @@ ancestor.
 **Gesture**: One drag or one resize of an element, from the first pointer movement after
 pointer-down until the pointer is released or the gesture is cancelled — or a key sequence, or a
 programmatic `resizeTo` call (one step, ended at once). A press without movement is not a gesture
-and emits no events. An element has at most one gesture at a time.
+and emits no events. An element has at most one gesture at a time. Its start event carries the
+rect the gesture began with, its end event the final rect.
 
 **Guides**: The coordinates an element can snap to while it is dragged inside a container: custom
 guides, the parent's edges and centre, and the edges and centres of the other members. Vertical

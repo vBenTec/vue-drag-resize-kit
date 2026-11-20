@@ -314,9 +314,14 @@ export interface StepResizeInput {
   anchor?: boolean
 }
 
+/** `next`, or `null` if it changes nothing or reached an unbounded limit (`Infinity` without a max). */
+const settleStep = (next: Rect, start: Rect): Rect | null =>
+  !Number.isFinite(next.w) || !Number.isFinite(next.h) || isSameRect(next, start) ? null : next
+
 /**
  * The rect after one keyboard resize step: the edges of `handle` move, the others stay, under the
- * same constraints as a pointer resize from that corner.
+ * same constraints as a pointer resize from that corner. `null` if the step changes nothing or
+ * reaches an unbounded limit (`±Infinity` without a min / max size).
  */
 export const stepResizeRect = ({
   start,
@@ -326,7 +331,7 @@ export const stepResizeRect = ({
   options,
   parentSize,
   anchor,
-}: StepResizeInput): Rect => {
+}: StepResizeInput): Rect | null => {
   const { aspectRatio, edges, limits } = prepareResize(handle, start, options, parentSize)
   // With a locked ratio the stepped dimension drives the other.
   const [growX, growY] =
@@ -335,5 +340,31 @@ export const stepResizeRect = ({
       : growW !== 0
         ? [growW, growW * aspectRatio]
         : [growH / aspectRatio, growH]
-  return applyGrowth(edges, start, growX, growY, limits, anchor)
+  return settleStep(applyGrowth(edges, start, growX, growY, limits, anchor), start)
+}
+
+export interface ResizeToInput extends Omit<StepResizeInput, 'growW' | 'growH'> {
+  /**
+   * The size to resize to. `±Infinity` is the max / min size; a missing or `NaN` dimension stays.
+   */
+  size: { w?: number; h?: number }
+}
+
+/** Whether a dimension is given: `NaN` is ignored like a missing one. */
+const isGiven = (size: number | undefined): size is number =>
+  size !== undefined && !Number.isNaN(size)
+
+/**
+ * The rect after resizing `start` to `size` in one step at the edges of `handle` (see
+ * `stepResizeRect`). With a locked aspect ratio a given width drives, also when it is the current
+ * one. `null` if nothing changes or the size is an unbounded limit.
+ */
+export const resizeRectTo = ({ start, size, ...input }: ResizeToInput): Rect | null => {
+  const widthDrives = isGiven(size.w) && isAspectLocked(input.options)
+  return stepResizeRect({
+    ...input,
+    start,
+    growW: isGiven(size.w) ? size.w - start.w : 0,
+    growH: !widthDrives && isGiven(size.h) ? size.h - start.h : 0,
+  })
 }

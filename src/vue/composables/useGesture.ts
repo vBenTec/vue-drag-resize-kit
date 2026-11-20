@@ -1,23 +1,11 @@
 import { onScopeDispose, readonly, shallowRef, type Ref, type ShallowRef } from 'vue'
 
-import { isPrimaryPointer, trackPointer, type PointerSessionHandlers } from '../../core/pointer'
-import {
-  dragRect,
-  isAspectLocked,
-  isSameRect,
-  resizeRect,
-  stepResizeRect,
-} from '../../core/positioning'
+import { createGestures, type Gesture, type GesturePhase } from '../../core/gesture'
+import { isPrimaryPointer, trackPointer } from '../../core/pointer'
+import { dragRect, resizeRect, resizeRectTo, stepResizeRect } from '../../core/positioning'
 import type { ConstraintOptions, PhysicalResizeHandle, Rect } from '../../core/types'
 import type { ContainerMember, DraggableResizableEmit, ResizeToSize } from '../types'
 import { useParentSize } from './useParentSize'
-
-/** The gesture an element is performing: a drag, or a resize by one of its handles. */
-export type Gesture = { kind: 'drag' } | { kind: 'resize'; handle: PhysicalResizeHandle }
-
-/** Whether a `resizeTo` dimension is given: `NaN` is ignored like a missing one. */
-const isGiven = (size: number | undefined): size is number =>
-  size !== undefined && !Number.isNaN(size)
 
 export interface UseGestureOptions {
   /** The element; its parent is measured for `parent` bounds and snapping. */
@@ -36,9 +24,9 @@ export interface UseGestureOptions {
 }
 
 /**
- * Drags and resizes an element, one gesture at a time: a pointer gesture, or a keyboard sequence
- * of steps. Re-measures the parent when a gesture starts and stops tracking the pointer when the
- * owning scope is disposed.
+ * Drags and resizes an element by pointer, key steps and `resizeTo`, feeding the Gesture session
+ * (`core/gesture`) with the rects computed under the constraints. Re-measures the parent when a
+ * gesture starts and stops tracking the pointer when the owning scope is disposed.
  */
 export const useGesture = ({
   root,
@@ -52,10 +40,8 @@ export const useGesture = ({
   emit,
 }: UseGestureOptions) => {
   const gesture = shallowRef<Gesture | null>(null)
-  // Stops the current gesture without end events and runs its cleanup.
-  let cancel: (() => void) | null = null
-  // Whether the current gesture is a keyboard sequence, which runs until `endSteps()`.
-  let stepping = false
+  // Stops tracking the current pointer gesture and runs its cleanup, without end events.
+  let stopPointer: (() => void) | null = null
 
   // The parent's size is needed for `parent` bounds and for snapping to the parent's edges.
   const { parentSize, refresh: refreshParentSize } = useParentSize(
@@ -63,230 +49,170 @@ export const useGesture = ({
     () => !!constraints.value.parent || member !== null,
   )
 
-  /** Whether `event` may start a gesture. */
-  const canStart = (event: PointerEvent, enabled: boolean) =>
-    enabled && !gesture.value && isPrimaryPointer(event)
+  const emitPhase = (phase: GesturePhase, current: Gesture, next: Rect) => {
+    if (current.kind === 'drag') {
+      const point = { x: next.x, y: next.y }
+      if (phase === 'start') emit('drag-start', point)
+      else if (phase === 'move') emit('dragging', point)
+      else emit('drag-end', point)
+    } else if (phase === 'start') emit('resize-start', next)
+    else if (phase === 'move') emit('resizing', next)
+    else emit('resize-end', next)
+  }
+
+  const gestures = createGestures({
+    read: () => rect.value,
+    write: (next) => {
+      rect.value = next
+    },
+    emit: emitPhase,
+    onChange: (next) => {
+      gesture.value = next
+    },
+  })
 
   /**
-   * Follows the pointer of `event` until it is released. `cleanup` runs when the gesture ends,
-   * before `onEnd`, and when it is cancelled.
+   * Begins `next` and follows the pointer of `event` until it is released. `onMove` gets the
+   * distance since the press and returns the rect to move to; a move of zero before any movement
+   * is not a movement (some touch stacks fire one right at the press). `cleanup` runs when the
+   * gesture ends and when it is cancelled.
    */
   const track = (
     event: PointerEvent,
-    { onMove, onEnd }: PointerSessionHandlers,
+    next: Gesture,
+    onMove: (deltaX: number, deltaY: number) => Rect,
     cleanup: () => void = () => {},
   ) => {
+    const pointer = gestures.begin(next)
+    if (!pointer) return false
+    refreshParentSize()
+    let moved = false
+
     const stop = trackPointer(event, {
-      onMove,
+      onMove: (deltaX, deltaY) => {
+        if (!moved && deltaX === 0 && deltaY === 0) return
+        moved = true
+        pointer.move(onMove(deltaX, deltaY))
+      },
       onEnd: () => {
-        cancel = null
-        gesture.value = null
+        stopPointer = null
         cleanup()
-        onEnd()
+        pointer.end()
       },
     })
-    cancel = () => {
+    stopPointer = () => {
       stop()
       cleanup()
     }
+    return true
   }
 
   const startDrag = (event: PointerEvent) => {
-    if (!canStart(event, draggable())) return
-    refreshParentSize()
-
+    if (!draggable() || !isPrimaryPointer(event)) return
     // Only the position is fixed at the start; bounds and snapping use the current size.
     const origin = { x: rect.value.x, y: rect.value.y }
-    const snap = member?.startSnap(parentSize.value) ?? null
+    let snap: ReturnType<ContainerMember['startSnap']> | null = null
 
-    gesture.value = { kind: 'drag' }
-    // `drag-start` waits for the first movement: a press that never moves emits nothing.
-    let started = false
-
-    track(
+    const started = track(
       event,
-      {
-        onMove: (deltaX, deltaY) => {
-          // Some touch stacks fire one zero-delta move right at the press; it is not a movement.
-          if (!started && deltaX === 0 && deltaY === 0) return
-          if (!started) {
-            started = true
-            emit('drag-start', { ...origin })
-          }
-
-          const current = rect.value
-          const next = dragRect({
-            start: { ...current, ...origin },
-            deltaX,
-            deltaY,
-            options: constraints.value,
-            parentSize: parentSize.value,
-            guides: snap?.guides ?? null,
-          })
-
-          snap?.publish(next.matchedGuides)
-
-          rect.value = { ...current, x: next.x, y: next.y }
-          emit('dragging', { x: next.x, y: next.y })
-        },
-        onEnd: () => {
-          if (started) emit('drag-end', { x: rect.value.x, y: rect.value.y })
-        },
-      },
-      () => snap?.end(),
-    )
-  }
-
-  const startResize = (event: PointerEvent, handle: PhysicalResizeHandle) => {
-    if (!canStart(event, resizable())) return
-    refreshParentSize()
-
-    const start = rect.value
-
-    gesture.value = { kind: 'resize', handle }
-    // `resize-start` waits for the first movement: a press that never moves emits nothing.
-    let started = false
-
-    track(event, {
-      onMove: (deltaX, deltaY) => {
-        if (!started && deltaX === 0 && deltaY === 0) return
-        if (!started) {
-          started = true
-          emit('resize-start', start)
-        }
-
-        const next = resizeRect({
-          handle,
-          start,
+      { kind: 'drag' },
+      (deltaX, deltaY) => {
+        const current = rect.value
+        const next = dragRect({
+          start: { ...current, ...origin },
           deltaX,
           deltaY,
           options: constraints.value,
           parentSize: parentSize.value,
-          anchor: anchor(),
-          symmetric: symmetric(),
+          guides: snap?.guides ?? null,
         })
-
-        rect.value = next
-        emit('resizing', next)
+        snap?.publish(next.matchedGuides)
+        return { ...current, x: next.x, y: next.y }
       },
-      onEnd: () => {
-        if (started) emit('resize-end', rect.value)
-      },
-    })
+      () => snap?.end(),
+    )
+    if (started) snap = member?.startSnap(parentSize.value) ?? null
   }
+
+  const startResize = (event: PointerEvent, handle: PhysicalResizeHandle) => {
+    if (!resizable() || !isPrimaryPointer(event)) return
+    const start = rect.value
+
+    track(event, { kind: 'resize', handle }, (deltaX, deltaY) =>
+      resizeRect({
+        handle,
+        start,
+        deltaX,
+        deltaY,
+        options: constraints.value,
+        parentSize: parentSize.value,
+        anchor: anchor(),
+        symmetric: symmetric(),
+      }),
+    )
+  }
+
+  /** Moves the element by one key step; the first step that moves it emits `drag-start`. */
+  const stepDrag = (deltaX: number, deltaY: number) =>
+    gestures.step({ kind: 'drag' }, (current, first) => {
+      if (!draggable()) return null
+      if (first) refreshParentSize()
+      const { x, y } = dragRect({
+        start: current,
+        deltaX,
+        deltaY,
+        options: constraints.value,
+        parentSize: parentSize.value,
+        guides: null,
+      })
+      return x === current.x && y === current.y ? null : { ...current, x, y }
+    })
 
   /**
-   * Whether a keyboard step of `kind` may run: never during a pointer gesture. A running sequence
-   * of the other kind ends first.
-   */
-  const canStep = (kind: Gesture['kind'], enabled: boolean) => {
-    if (stepping && gesture.value?.kind !== kind) endSteps()
-    if (!enabled || (gesture.value && !stepping)) return false
-    if (!stepping) refreshParentSize()
-    return true
-  }
-
-  // Like a pointer gesture, a sequence starts with the first step that changes anything.
-  const beginSteps = (next: Gesture) => {
-    stepping = true
-    gesture.value = next
-    if (next.kind === 'drag') emit('drag-start', { x: rect.value.x, y: rect.value.y })
-    else emit('resize-start', rect.value)
-  }
-
-  /** Moves the element by one keyboard step; the first step that moves it emits `drag-start`. */
-  const stepDrag = (deltaX: number, deltaY: number) => {
-    if (!canStep('drag', draggable())) return
-    const current = rect.value
-    const { x, y } = dragRect({
-      start: current,
-      deltaX,
-      deltaY,
-      options: constraints.value,
-      parentSize: parentSize.value,
-      guides: null,
-    })
-    if (x === current.x && y === current.y) return
-    if (!stepping) beginSteps({ kind: 'drag' })
-    rect.value = { ...current, x, y }
-    emit('dragging', { x, y })
-  }
-
-  /**
-   * The rect a step of `growW` / `growH` at the edges of the bottom corner `handle` resizes to (see
-   * `stepResizeRect`); `null` if it changes nothing or reaches an unbounded limit (`Infinity`
-   * without a max size).
-   */
-  const stepResizeTarget = (growW: number, growH: number, handle: 'bl' | 'br') => {
-    const current = rect.value
-    const next = stepResizeRect({
-      start: current,
-      growW,
-      growH,
-      handle,
-      options: constraints.value,
-      parentSize: parentSize.value,
-      anchor: anchor(),
-    })
-    if (!Number.isFinite(next.w) || !Number.isFinite(next.h) || isSameRect(next, current))
-      return null
-    return next
-  }
-
-  /**
-   * Resizes the element by one keyboard step at the edges of its bottom corner `handle` (see
+   * Resizes the element by one key step at the edges of its bottom corner `handle` (see
    * `stepResizeRect`); the first step that changes it emits `resize-start`. A step to an unbounded
    * limit (`Infinity` without a max size) is ignored.
    */
-  const stepResize = (growW: number, growH: number, handle: 'bl' | 'br') => {
-    if (!canStep('resize', resizable())) return
-    const next = stepResizeTarget(growW, growH, handle)
-    if (!next) return
-    if (!stepping) beginSteps({ kind: 'resize', handle })
-    rect.value = next
-    emit('resizing', next)
-  }
-
-  /** Ends the running keyboard sequence, emitting `drag-end` / `resize-end`. */
-  const endSteps = () => {
-    const current = gesture.value
-    if (!stepping || !current) return
-    stepping = false
-    gesture.value = null
-    if (current.kind === 'drag') emit('drag-end', { x: rect.value.x, y: rect.value.y })
-    else emit('resize-end', rect.value)
-  }
+  const stepResize = (growW: number, growH: number, handle: 'bl' | 'br') =>
+    gestures.step({ kind: 'resize', handle }, (current, first) => {
+      if (!resizable()) return null
+      if (first) refreshParentSize()
+      return stepResizeRect({
+        start: current,
+        growW,
+        growH,
+        handle,
+        options: constraints.value,
+        parentSize: parentSize.value,
+        anchor: anchor(),
+      })
+    })
 
   /**
-   * Resizes the element to `size` at the edges of its bottom corner `handle`, as one gesture that
-   * ends at once: the three resize events, or none if nothing changes. Never joins or ends a
-   * running gesture — it is ignored then. `±Infinity` is the max / min size; a resize to an
-   * unbounded limit is ignored, like a keyboard step.
+   * Resizes the element to `size` at the edges of its bottom corner `handle` (see
+   * `resizeRectTo`), as one gesture that ends at once: the three resize events, or none if nothing
+   * changes. Never joins or ends a running gesture — it is ignored then.
    */
   const resizeTo = (size: ResizeToSize, handle: 'bl' | 'br') => {
     if (gesture.value || !resizable()) return
     refreshParentSize()
-    const current = rect.value
-    // With a locked aspect ratio a given width drives, also when it is the current one.
-    const widthDrives = isGiven(size.w) && isAspectLocked(constraints.value)
-    const next = stepResizeTarget(
-      isGiven(size.w) ? size.w - current.w : 0,
-      !widthDrives && isGiven(size.h) ? size.h - current.h : 0,
-      handle,
+    gestures.once({ kind: 'resize', handle }, (current) =>
+      resizeRectTo({
+        start: current,
+        size,
+        handle,
+        options: constraints.value,
+        parentSize: parentSize.value,
+        anchor: anchor(),
+      }),
     )
-    if (!next) return
-    emit('resize-start', current)
-    rect.value = next
-    emit('resizing', next)
-    // Not `rect.value`: a controlled model only follows once the parent has re-rendered.
-    emit('resize-end', next)
   }
 
   // Unmounting mid-gesture stops it without emitting an end event and hides its matched guides.
   onScopeDispose(() => {
-    cancel?.()
-    cancel = null
-    stepping = false
+    stopPointer?.()
+    stopPointer = null
+    gestures.cancel()
   })
 
   return {
@@ -295,7 +221,7 @@ export const useGesture = ({
     startResize,
     stepDrag,
     stepResize,
-    endSteps,
+    endSteps: gestures.endSteps,
     resizeTo,
   }
 }

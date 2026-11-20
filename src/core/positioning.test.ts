@@ -5,9 +5,11 @@ import {
   getResizeEdges,
   isAspectLocked,
   resizeRect,
+  resizeRectTo,
   stepResizeRect,
   type DragInput,
   type ResizeInput,
+  type ResizeToInput,
   type StepResizeInput,
 } from './positioning'
 import type { Guides, Rect } from './types'
@@ -20,6 +22,9 @@ const drag = (input: Partial<DragInput>) =>
 
 const resize = (input: Partial<ResizeInput> & Pick<ResizeInput, 'handle'>) =>
   resizeRect({ start, deltaX: 0, deltaY: 0, options: {}, parentSize: null, ...input })
+
+const resizeTo = (size: ResizeToInput['size'], input: Partial<ResizeToInput> = {}) =>
+  resizeRectTo({ start, size, handle: 'br', options: {}, parentSize: null, ...input })
 
 const step = (input: Partial<StepResizeInput>) =>
   stepResizeRect({
@@ -378,7 +383,7 @@ describe('stepResizeRect', () => {
     expect(step({ growW: -5, options, parentSize })).toEqual({ ...start, w: 98 })
     expect(step({ growH: 5, options, parentSize })).toEqual({ ...start, h: 52 })
     expect(step({ growW: 500, options, parentSize })).toEqual({ ...start, w: 200 })
-    expect(step({ growW: 5, options: { disabledW: true } })).toEqual(start)
+    expect(step({ growW: 5, options: { disabledW: true } })).toBeNull()
   })
 
   it.each(['bl', 'br'] as const)('keeps a locked ratio from %s, top edge in place', (handle) => {
@@ -399,6 +404,37 @@ describe('stepResizeRect', () => {
       w: 160,
       h: 80,
     })
-    expect(step({ growW: Infinity }).w).toBe(Infinity)
+    expect(step({ growW: Infinity })).toBeNull()
+  })
+
+  it('returns null for a step that changes nothing', () => {
+    expect(step({})).toBeNull()
+    expect(step({ growW: -5, options: { minW: 100 } })).toBeNull()
+  })
+})
+
+describe('resizeRectTo', () => {
+  it('resizes to the given dimensions, keeping a missing or NaN one', () => {
+    expect(resizeTo({ w: 120 })).toEqual({ ...start, w: 120 })
+    expect(resizeTo({ h: 80 })).toEqual({ ...start, h: 80 })
+    expect(resizeTo({ w: 120, h: 80 })).toEqual({ ...start, w: 120, h: 80 })
+    expect(resizeTo({ w: NaN, h: 80 })).toEqual({ ...start, h: 80 })
+  })
+
+  it('lets a given width drive under the aspect lock, also when it is the current one', () => {
+    const options = { lockAspectRatio: true }
+    expect(resizeTo({ w: 200, h: 10 }, { options })).toEqual({ ...start, w: 200, h: 100 })
+    expect(resizeTo({ w: 100, h: 80 }, { options })).toBeNull()
+    expect(resizeTo({ h: 80 }, { options })).toEqual({ ...start, w: 160, h: 80 })
+  })
+
+  it('resizes to the limits for infinite sizes, but not to an unbounded one', () => {
+    expect(resizeTo({ w: Infinity }, { options: { maxW: 150 } })).toEqual({ ...start, w: 150 })
+    expect(resizeTo({ w: -Infinity }, { options: { minW: 30 } })).toEqual({ ...start, w: 30 })
+    expect(resizeTo({ w: Infinity })).toBeNull()
+  })
+
+  it('returns null when nothing changes', () => {
+    expect(resizeTo({ w: 100, h: 50 })).toBeNull()
   })
 })
