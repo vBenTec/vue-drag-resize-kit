@@ -33,6 +33,9 @@ Before you finish, run what CI runs: `pnpm fmt:check && pnpm lint && pnpm typech
 - Conventional commit messages (`feat:`, `fix:`, `refactor:`, `docs:`, `chore:`).
 - User-facing changes add an entry under `## Unreleased` in `CHANGELOG.md` and update the docs
   (see [Documentation](#documentation)); releases follow `RELEASE.md`.
+- Exported types live in `src/core/types.ts` (framework-agnostic) and `src/vue/types.ts` (Vue,
+  including the composables' option interfaces, marked `@internal`), not in the module that uses
+  them. Only unexported helper types stay next to their code.
 - `dist/` is build output. Don't edit it.
 
 ## Documentation

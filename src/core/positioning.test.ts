@@ -7,12 +7,8 @@ import {
   resizeRect,
   resizeRectTo,
   stepResizeRect,
-  type DragInput,
-  type ResizeInput,
-  type ResizeToInput,
-  type StepResizeInput,
 } from './positioning'
-import type { Guides, Rect } from './types'
+import type { DragInput, Guides, Rect, ResizeInput, ResizeToInput, StepResizeInput } from './types'
 
 const parentSize = { width: 300, height: 200 }
 const start: Rect = { x: 100, y: 50, w: 100, h: 50 }

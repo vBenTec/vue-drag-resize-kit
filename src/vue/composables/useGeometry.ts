@@ -1,22 +1,8 @@
-import type { Ref, ShallowRef } from 'vue'
-
-import type { FlowAnchor } from '../../core/direction'
-import { useBoundarySize, type BoundaryTarget } from './useBoundarySize'
+import type { UseGeometryOptions } from '../types'
+import { useBoundarySize } from './useBoundarySize'
 import { useDirection } from './useDirection'
 import { useNaturalSize } from './useNaturalSize'
 import { useParentSize } from './useParentSize'
-
-export interface UseGeometryOptions {
-  root: Readonly<ShallowRef<HTMLElement | null>>
-  /** Flow layout: natural sizing applies and the flow anchor is resolved. */
-  flow: () => boolean
-  flowAnchor: () => FlowAnchor
-  boundary: () => BoundaryTarget | undefined
-  /** Whether the parent is measured, for `parent` bounds and snapping. */
-  measureParent: () => boolean
-  w: Ref<number>
-  h: Ref<number>
-}
 
 /**
  * Everything measured about the element: the size of its parent, the content box of its

@@ -1,9 +1,4 @@
-export interface PointerSessionHandlers {
-  /** Called on every move with the distance travelled since the session started. */
-  onMove: (deltaX: number, deltaY: number, event: PointerEvent) => void
-  /** Called once when the pointer is released or the gesture is cancelled. */
-  onEnd: () => void
-}
+import type { PointerSessionHandlers } from './types'
 
 /**
  * Follows the pointer that triggered `startEvent` until it is released. Listeners live on the

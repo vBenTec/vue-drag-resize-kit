@@ -1,36 +1,11 @@
-import { onScopeDispose, readonly, shallowRef, type Ref } from 'vue'
+import { onScopeDispose, readonly, shallowRef } from 'vue'
 
 import { getInlineEndCorner } from '../../core/direction'
-import { createGestures, type Gesture, type GesturePhase } from '../../core/gesture'
+import { createGestures } from '../../core/gesture'
 import { isPrimaryPointer, trackPointer } from '../../core/pointer'
 import { dragRect, resizeRect, resizeRectTo, stepResizeRect } from '../../core/positioning'
-import type {
-  ConstraintOptions,
-  Direction,
-  PhysicalResizeHandle,
-  Rect,
-  ResizeMode,
-  Size,
-} from '../../core/types'
-import type { ContainerMember, DraggableResizableEmit, ResizeToSize } from '../types'
-
-export interface UseGestureOptions {
-  rect: Ref<Rect>
-  /** Inner size of the parent, for `parent` bounds and snapping. */
-  parentSize: Readonly<Ref<Size | null>>
-  /** The text direction: `resizeTo` changes the size at the inline-end edge. */
-  direction: () => Direction
-  /** Re-measures the element, before a gesture begins. */
-  measure: () => void
-  constraints: Readonly<Ref<ConstraintOptions>>
-  draggable: () => boolean
-  resizable: () => boolean
-  /** How a resize moves the rect. */
-  resizeMode: () => ResizeMode
-  /** Membership in a `DraggableContainer`, for snapping while dragging. */
-  member: ContainerMember | null
-  emit: DraggableResizableEmit
-}
+import type { Gesture, GesturePhase, PhysicalResizeHandle, Rect } from '../../core/types'
+import type { ContainerMember, ResizeToSize, UseGestureOptions } from '../types'
 
 /**
  * Drags and resizes an element by pointer, key steps and `resizeTo`, feeding the Gesture session
