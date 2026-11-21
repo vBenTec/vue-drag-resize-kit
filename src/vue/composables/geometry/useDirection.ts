@@ -1,8 +1,8 @@
 import { onMounted, shallowRef, watch } from 'vue'
 
-import { getAnchoredEdge } from '../../core/direction'
-import type { Direction } from '../../core/types'
-import type { UseDirectionOptions } from '../types'
+import { getAnchoredEdge } from '../../../core/handles/direction'
+import type { Direction } from '../../../core/types'
+import type { UseDirectionOptions } from '../../types'
 
 const toDirection = (style: CSSStyleDeclaration): Direction =>
   style.direction === 'rtl' ? 'rtl' : 'ltr'

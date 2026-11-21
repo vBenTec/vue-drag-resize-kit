@@ -1,6 +1,6 @@
 import { onWatcherCleanup, shallowRef, watch, type ShallowRef } from 'vue'
 
-import type { Size } from '../../core/types'
+import type { Size } from '../../../core/types'
 
 /**
  * Tracks the inner size of an element's parent (the box absolutely positioned children are laid

@@ -1,6 +1,6 @@
 import { inject, onScopeDispose, provide, shallowRef, type InjectionKey } from 'vue'
 
-import { collectGuides } from '../../core/guides'
+import { collectGuides } from '../../core/positioning/guides'
 import type { Guides, Rect, SnapOptions } from '../../core/types'
 import type { ContainerContext, ContainerMember, SnapSession } from '../types'
 

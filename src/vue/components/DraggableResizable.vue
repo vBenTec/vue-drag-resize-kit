@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, useId, useTemplateRef } from 'vue'
 
-import { isOnAnchoredEdge } from '../../core/direction'
-import { getDefaultHandles, resolveHandles } from '../../core/handles'
+import { isOnAnchoredEdge } from '../../core/handles/direction'
+import { getDefaultHandles, resolveHandles } from '../../core/handles/handles'
 import { resolveLayout } from '../../core/layout'
 import type { PhysicalResizeHandle, Rect } from '../../core/types'
+import { useGeometry } from '../composables/geometry/useGeometry'
+import { useGesture } from '../composables/gesture/useGesture'
+import { useKeyboard } from '../composables/gesture/useKeyboard'
 import { useActivation } from '../composables/useActivation'
 import { useContainerMember } from '../composables/useContainer'
-import { useGeometry } from '../composables/useGeometry'
-import { useGesture } from '../composables/useGesture'
-import { useKeyboard } from '../composables/useKeyboard'
 import { useToolbar } from '../composables/useToolbar'
 import type {
   DraggableResizableEmits,

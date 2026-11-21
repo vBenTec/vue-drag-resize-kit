@@ -1,4 +1,4 @@
-import type { AnchoredEdge, Direction, FlowAnchor, PhysicalResizeHandle } from './types'
+import type { AnchoredEdge, Direction, FlowAnchor, PhysicalResizeHandle } from '../types'
 
 /** A computed `text-align` as the anchor it implies; `justify` and unknown values align to the start. */
 const TEXT_ALIGN_ANCHORS: Partial<Record<string, FlowAnchor>> = {

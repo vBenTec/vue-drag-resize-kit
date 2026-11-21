@@ -1,7 +1,7 @@
 import { onWatcherCleanup, readonly, shallowRef, watch } from 'vue'
 
-import type { Size } from '../../core/types'
-import type { UseNaturalSizeOptions } from '../types'
+import type { Size } from '../../../core/types'
+import type { UseNaturalSizeOptions } from '../../types'
 
 /** Whether a model write turns its dimension natural / explicit; `null` for a synced echo. */
 const classify = (value: number, lastSynced: number | null): boolean | null =>

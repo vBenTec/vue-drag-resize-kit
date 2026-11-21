@@ -7,6 +7,24 @@
     "perf": "error"
   },
   "rules": {},
+  "overrides": [
+    {
+      "files": ["src/core/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["vue", "vue/*", "@vue/*", "@vueuse/*", "vue-demi", "**/vue/**"],
+                "message": "src/core is framework-agnostic: no Vue imports."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
   "env": {
     "builtin": true,
     "browser": true

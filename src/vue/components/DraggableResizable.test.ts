@@ -2,7 +2,7 @@ import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { nextTick } from 'vue'
 
-import { ALL_HANDLES, CORNER_HANDLES } from '../../core/handles'
+import { ALL_HANDLES, CORNER_HANDLES } from '../../core/handles/handles'
 import type { ResizeHandle } from '../../core/types'
 import {
   dragBy,

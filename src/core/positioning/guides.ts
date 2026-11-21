@@ -1,4 +1,4 @@
-import type { Guides, Point, Rect, Size, SnapOptions } from './types'
+import type { Guides, Point, Rect, Size, SnapOptions } from '../types'
 
 /** Distance (px) within which an element snaps to a guide. */
 export const SNAP_THRESHOLD = 5

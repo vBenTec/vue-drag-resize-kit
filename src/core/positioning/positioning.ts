@@ -1,4 +1,3 @@
-import { getMatchedGuides, snapToGuides } from './guides'
 import type {
   ConstraintOptions,
   DragInput,
@@ -14,7 +13,8 @@ import type {
   Size,
   StepResizeInput,
   VerticalEdge,
-} from './types'
+} from '../types'
+import { getMatchedGuides, snapToGuides } from './guides'
 
 /** Edge moved by the first / second letter of a handle; `m`iddle moves neither. */
 const VERTICAL_EDGES: Partial<Record<string, VerticalEdge>> = { t: 't', b: 'b' }

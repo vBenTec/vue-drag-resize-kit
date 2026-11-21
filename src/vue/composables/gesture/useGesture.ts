@@ -1,11 +1,16 @@
 import { onScopeDispose, readonly, shallowRef } from 'vue'
 
-import { getInlineEndCorner } from '../../core/direction'
-import { createGestures } from '../../core/gesture'
-import { isPrimaryPointer, trackPointer } from '../../core/pointer'
-import { dragRect, resizeRect, resizeRectTo, stepResizeRect } from '../../core/positioning'
-import type { Gesture, GesturePhase, PhysicalResizeHandle, Rect } from '../../core/types'
-import type { ContainerMember, ResizeToSize, UseGestureOptions } from '../types'
+import { createGestures } from '../../../core/gesture/gesture'
+import { isPrimaryPointer, trackPointer } from '../../../core/gesture/pointer'
+import { getInlineEndCorner } from '../../../core/handles/direction'
+import {
+  dragRect,
+  resizeRect,
+  resizeRectTo,
+  stepResizeRect,
+} from '../../../core/positioning/positioning'
+import type { Gesture, GesturePhase, PhysicalResizeHandle, Rect } from '../../../core/types'
+import type { ContainerMember, ResizeToSize, UseGestureOptions } from '../../types'
 
 /**
  * Drags and resizes an element by pointer, key steps and `resizeTo`, feeding the Gesture session

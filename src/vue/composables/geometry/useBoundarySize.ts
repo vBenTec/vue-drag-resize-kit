@@ -1,7 +1,7 @@
 import { isRef, onWatcherCleanup, shallowRef, watch, type ShallowRef } from 'vue'
 
-import type { Size } from '../../core/types'
-import type { BoundaryTarget } from '../types'
+import type { Size } from '../../../core/types'
+import type { BoundaryTarget } from '../../types'
 
 /** A computed padding as a number; happy-dom and friends may report `''` instead of `0px`. */
 const padding = (value: string) => parseFloat(value) || 0

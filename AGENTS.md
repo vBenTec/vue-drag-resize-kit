@@ -4,8 +4,16 @@ Vue 3 draggable/resizable component library (`vue-drag-resize-kit`), TypeScript,
 
 ## Layout
 
-- `src/core/`: framework-agnostic logic (positioning, handles, guides, pointer). No Vue imports here.
-- `src/vue/`: Vue components (`components/`) and composables (`composables/`).
+- `src/core/`: framework-agnostic logic. No Vue imports here (enforced by oxlint).
+  - `positioning/`: rect math for dragging, resizing and snapping to guides.
+  - `handles/`: which handles exist, how logical ones resolve to physical ones, and which edge a
+    flow anchor keeps in place (handles on it are hidden).
+  - `gesture/`: the lifecycle of one gesture and pointer tracking.
+- `src/vue/`: Vue components (`components/`) and composables (`composables/`). `composables/geometry/`
+  measures the element (`useGeometry` is its entry point), `composables/gesture/` drives gestures
+  from pointer and keyboard.
+- Group modules by concept in a folder once at least two belong together; a single module stays at
+  the root of its layer. No `index.ts` barrels: import the file.
 - `src/index.ts`: public API. Keep exports in sync with `src/index.test-d.ts`.
 - `src/test-utils/`: shared test helpers.
 - `playground/`: local demo app (`pnpm dev-vue`).
