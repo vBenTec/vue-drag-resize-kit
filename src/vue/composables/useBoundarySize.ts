@@ -1,19 +1,10 @@
-import { isRef, onWatcherCleanup, shallowRef, watch, type Ref, type ShallowRef } from 'vue'
+import { isRef, onWatcherCleanup, shallowRef, watch, type ShallowRef } from 'vue'
 
 import type { Size } from '../../core/types'
+import type { BoundaryTarget } from '../types'
 
-/**
- * The element whose content box caps the size: a CSS selector matched against the component's
- * ancestors (via `closest`), the element itself, a ref to it, or a getter.
- */
 /** A computed padding as a number; happy-dom and friends may report `''` instead of `0px`. */
 const padding = (value: string) => parseFloat(value) || 0
-
-export type BoundaryTarget =
-  | string
-  | HTMLElement
-  | Ref<HTMLElement | null>
-  | (() => HTMLElement | null)
 
 /**
  * Tracks the content-box size of a `boundary` element — unlike `parent`, which measures the

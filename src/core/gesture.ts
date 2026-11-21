@@ -1,36 +1,4 @@
-import type { PhysicalResizeHandle, Rect } from './types'
-
-/** The gesture an element is performing: a drag, or a resize by one of its handles. */
-export type Gesture = { kind: 'drag' } | { kind: 'resize'; handle: PhysicalResizeHandle }
-
-/** Where in its gesture an event is: `start`, every `move`, and `end`. */
-export type GesturePhase = 'start' | 'move' | 'end'
-
-export interface GestureHost {
-  /** Re-measures the element; runs before a gesture reads the rect it begins with. */
-  measure: () => void
-  /** The element's current rect. */
-  read: () => Rect
-  /** Moves or resizes the element. */
-  write: (rect: Rect) => void
-  /** Reports a phase of `gesture` with the rect it carries. */
-  emit: (phase: GesturePhase, gesture: Gesture, rect: Rect) => void
-  /** Called with the running gesture whenever it changes, `null` once none runs. */
-  onChange: (gesture: Gesture | null) => void
-}
-
-/** A pointer gesture in progress. */
-export interface PointerGesture {
-  /** The rect the gesture began with, measured at the press. */
-  start: Rect
-  /** Applies the rect of a pointer movement; the first one emits `start`. */
-  move: (next: Rect) => void
-  /** Ends the gesture on release; `end` only follows a `start`. */
-  end: () => void
-}
-
-/** Computes the rect after a step from the current one, `null` if the step changes nothing. */
-export type StepTarget = (current: Rect) => Rect | null
+import type { Gesture, GestureHost, PointerGesture, Rect, StepTarget } from './types'
 
 /**
  * The gestures of one element, at most one at a time: a pointer gesture, a key sequence or a
@@ -135,5 +103,3 @@ export const createGestures = (host: GestureHost) => {
 
   return { begin, step, endSteps, once, cancel }
 }
-
-export type Gestures = ReturnType<typeof createGestures>

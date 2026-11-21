@@ -1,13 +1,8 @@
-import { onMounted, shallowRef, watch, type ShallowRef } from 'vue'
+import { onMounted, shallowRef, watch } from 'vue'
 
-import { getAnchoredEdge, type FlowAnchor } from '../../core/direction'
+import { getAnchoredEdge } from '../../core/direction'
 import type { Direction } from '../../core/types'
-
-export interface UseDirectionOptions {
-  root: Readonly<ShallowRef<HTMLElement | null>>
-  /** The anchor to resolve; `none` outside flow layout. */
-  flowAnchor: () => FlowAnchor
-}
+import type { UseDirectionOptions } from '../types'
 
 const toDirection = (style: CSSStyleDeclaration): Direction =>
   style.direction === 'rtl' ? 'rtl' : 'ltr'

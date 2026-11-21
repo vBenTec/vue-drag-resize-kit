@@ -1,17 +1,4 @@
-import type { Direction, PhysicalResizeHandle } from './types'
-
-/**
- * Which edge of an element in document flow stays in place while it resizes:
- *
- * - `none`: not resolved — every handle grows the size by the usual pointer delta.
- * - `start` / `end`: the inline-start / inline-end edge (left / right, mirrored in RTL).
- * - `center`: neither, the element is on a centred line and both edges move.
- * - `auto`: read from the `direction` and `text-align` of the nearest block ancestor.
- */
-export type FlowAnchor = 'auto' | 'start' | 'end' | 'center' | 'none'
-
-/** The resolved anchor: the physical edge that stays in place, or `center` for both moving. */
-export type AnchoredEdge = 'left' | 'right' | 'center'
+import type { AnchoredEdge, Direction, FlowAnchor, PhysicalResizeHandle } from './types'
 
 /** A computed `text-align` as the anchor it implies; `justify` and unknown values align to the start. */
 const TEXT_ALIGN_ANCHORS: Partial<Record<string, FlowAnchor>> = {
