@@ -1,20 +1,6 @@
-import { computed, nextTick, onMounted, shallowRef, watch, type Ref, type ShallowRef } from 'vue'
+import { computed, nextTick, onMounted, shallowRef, watch } from 'vue'
 
-import type { Direction } from '../../core/types'
-import type { ToolbarPlacement } from '../types'
-
-export interface UseToolbarOptions {
-  root: Readonly<ShallowRef<HTMLElement | null>>
-  /** The toolbar wrapper; `null` without the slot. */
-  toolbar: Readonly<ShallowRef<HTMLElement | null>>
-  active: Ref<boolean>
-  placement: () => ToolbarPlacement
-  /** Whether a gesture is running; `auto` is resolved again once it ends. */
-  gesturing: () => boolean
-  direction: () => Direction
-  /** Whether the root is focusable (`keyboard`), so `Escape` can move focus back to it. */
-  focusable: () => boolean
-}
+import type { UseToolbarOptions } from '../types'
 
 /** Selector of what the arrow keys move between in the toolbar. */
 const TOOLBAR_ITEMS =
@@ -130,5 +116,9 @@ export const useToolbar = ({
     event.preventDefault()
   }
 
-  return { placement, updatePlacement, onKeydown }
+  /** Whether `target` is in the toolbar. */
+  const contains = (target: EventTarget | null) =>
+    target instanceof Node && !!toolbar.value?.contains(target)
+
+  return { placement, updatePlacement, onKeydown, contains }
 }

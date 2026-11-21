@@ -1,42 +1,20 @@
 import { getMatchedGuides, snapToGuides } from './guides'
-import type { ConstraintOptions, Guides, PhysicalResizeHandle, Point, Rect, Size } from './types'
-
-type VerticalEdge = 't' | 'b' | null
-type HorizontalEdge = 'l' | 'r' | null
-
-export interface ResizeEdges {
-  /** Edge that follows the pointer vertically, `null` if the height does not change. */
-  vertical: VerticalEdge
-  /** Edge that follows the pointer horizontally, `null` if the width does not change. */
-  horizontal: HorizontalEdge
-}
-
-export interface ResizeInput {
-  handle: PhysicalResizeHandle
-  /** Rect at the moment the resize started. */
-  start: Rect
-  /** Pointer movement since the resize started. */
-  deltaX: number
-  deltaY: number
-  options: ConstraintOptions
-  /** Size of the parent, required for `options.parent`. */
-  parentSize: Size | null
-  /**
-   * Keep the edge opposite to the moving one in place by moving the rect when a `t` / `l` edge
-   * is dragged (the default). With `false` the rect never moves: `t` / `l` handles grow the size
-   * by the usual delta, and the element extends per its position in the layout — the policy for
-   * elements in document flow, whose position the browser owns.
-   * @default true
-   */
-  anchor?: boolean
-  /**
-   * The left and right edges move symmetrically, as for an element on a centred line in document
-   * flow: the width changes by twice the horizontal delta, so the dragged edge follows the
-   * pointer. Only meaningful with `anchor: false`.
-   * @default false
-   */
-  symmetric?: boolean
-}
+import type {
+  ConstraintOptions,
+  DragInput,
+  DragResult,
+  HorizontalEdge,
+  PhysicalResizeHandle,
+  Point,
+  Rect,
+  ResizeEdges,
+  ResizeInput,
+  ResizeMode,
+  ResizeToInput,
+  Size,
+  StepResizeInput,
+  VerticalEdge,
+} from './types'
 
 /** Edge moved by the first / second letter of a handle; `m`iddle moves neither. */
 const VERTICAL_EDGES: Partial<Record<string, VerticalEdge>> = { t: 't', b: 'b' }
@@ -88,24 +66,6 @@ const getPositionBounds = (
   return bounds
     ? { minX: 0, minY: 0, maxX: bounds.width - w, maxY: bounds.height - h }
     : { minX: -Infinity, minY: -Infinity, maxX: Infinity, maxY: Infinity }
-}
-
-export interface DragInput {
-  /** Rect at the moment the drag started. */
-  start: Rect
-  /** Pointer movement since the drag started. */
-  deltaX: number
-  deltaY: number
-  options: ConstraintOptions
-  /** Size of the parent, required for `options.parent`. */
-  parentSize: Size | null
-  /** Guides to snap to, `null` to not snap. */
-  guides: Guides | null
-}
-
-export interface DragResult extends Point {
-  /** Guides the element is aligned with at the new position, `null` without guides. */
-  matchedGuides: Guides | null
 }
 
 /**
@@ -260,15 +220,15 @@ const applyGrowth = (
   growX: number,
   growY: number,
   limits: ResizeLimits,
-  anchor: boolean | undefined,
+  mode: ResizeMode = 'anchored',
 ): Rect => {
   const w = edges.horizontal ? clamp(start.w + growX, limits.minWidth, limits.maxWidth) : start.w
   const h = edges.vertical ? clamp(start.h + growY, limits.minHeight, limits.maxHeight) : start.h
 
   return {
-    // The edge opposite to the moving one stays in place; without `anchor` the rect never moves.
-    x: anchor !== false && edges.horizontal === 'l' ? start.x + start.w - w : start.x,
-    y: anchor !== false && edges.vertical === 't' ? start.y + start.h - h : start.y,
+    // Anchored, the edge opposite to the moving one stays in place; otherwise the rect never moves.
+    x: mode === 'anchored' && edges.horizontal === 'l' ? start.x + start.w - w : start.x,
+    y: mode === 'anchored' && edges.vertical === 't' ? start.y + start.h - h : start.y,
     w,
     h,
   }
@@ -282,41 +242,27 @@ export const resizeRect = ({
   deltaY,
   options,
   parentSize,
-  anchor,
-  symmetric,
+  mode,
 }: ResizeInput): Rect => {
   const { aspectRatio, edges, limits } = prepareResize(handle, start, options, parentSize)
   const { growX, growY } = calculateGrowth(
     handle,
     edges,
-    symmetric ? 2 * deltaX : deltaX,
+    mode === 'symmetric' ? 2 * deltaX : deltaX,
     deltaY,
     aspectRatio,
   )
-  return applyGrowth(edges, start, growX, growY, limits, anchor)
+  return applyGrowth(edges, start, growX, growY, limits, mode)
 }
 
-export interface StepResizeInput {
-  /** Rect before the step. */
-  start: Rect
-  /**
-   * How much the width / the height should grow (negative to shrink), one of them `0`. With a
-   * locked aspect ratio the other dimension follows. `±Infinity` resizes to the min / max size.
-   */
-  growW: number
-  growH: number
-  /** The bottom corner whose edges move: `br` grows the width to the right, `bl` to the left. */
-  handle: 'bl' | 'br'
-  options: ConstraintOptions
-  /** Size of the parent, required for `options.parent`. */
-  parentSize: Size | null
-  /** See {@link ResizeInput.anchor}. @default true */
-  anchor?: boolean
-}
+/** `next`, or `null` if it changes nothing or reached an unbounded limit (`Infinity` without a max). */
+const settleStep = (next: Rect, start: Rect): Rect | null =>
+  !Number.isFinite(next.w) || !Number.isFinite(next.h) || isSameRect(next, start) ? null : next
 
 /**
  * The rect after one keyboard resize step: the edges of `handle` move, the others stay, under the
- * same constraints as a pointer resize from that corner.
+ * same constraints as a pointer resize from that corner. `null` if the step changes nothing or
+ * reaches an unbounded limit (`±Infinity` without a min / max size).
  */
 export const stepResizeRect = ({
   start,
@@ -325,8 +271,8 @@ export const stepResizeRect = ({
   handle,
   options,
   parentSize,
-  anchor,
-}: StepResizeInput): Rect => {
+  mode,
+}: StepResizeInput): Rect | null => {
   const { aspectRatio, edges, limits } = prepareResize(handle, start, options, parentSize)
   // With a locked ratio the stepped dimension drives the other.
   const [growX, growY] =
@@ -335,5 +281,24 @@ export const stepResizeRect = ({
       : growW !== 0
         ? [growW, growW * aspectRatio]
         : [growH / aspectRatio, growH]
-  return applyGrowth(edges, start, growX, growY, limits, anchor)
+  return settleStep(applyGrowth(edges, start, growX, growY, limits, mode), start)
+}
+
+/** Whether a dimension is given: `NaN` is ignored like a missing one. */
+const isGiven = (size: number | undefined): size is number =>
+  size !== undefined && !Number.isNaN(size)
+
+/**
+ * The rect after resizing `start` to `size` in one step at the edges of `handle` (see
+ * `stepResizeRect`). With a locked aspect ratio a given width drives, also when it is the current
+ * one. `null` if nothing changes or the size is an unbounded limit.
+ */
+export const resizeRectTo = ({ start, size, ...input }: ResizeToInput): Rect | null => {
+  const widthDrives = isGiven(size.w) && isAspectLocked(input.options)
+  return stepResizeRect({
+    ...input,
+    start,
+    growW: isGiven(size.w) ? size.w - start.w : 0,
+    growH: !widthDrives && isGiven(size.h) ? size.h - start.h : 0,
+  })
 }

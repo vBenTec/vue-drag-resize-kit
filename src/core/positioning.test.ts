@@ -5,12 +5,10 @@ import {
   getResizeEdges,
   isAspectLocked,
   resizeRect,
+  resizeRectTo,
   stepResizeRect,
-  type DragInput,
-  type ResizeInput,
-  type StepResizeInput,
 } from './positioning'
-import type { Guides, Rect } from './types'
+import type { DragInput, Guides, Rect, ResizeInput, ResizeToInput, StepResizeInput } from './types'
 
 const parentSize = { width: 300, height: 200 }
 const start: Rect = { x: 100, y: 50, w: 100, h: 50 }
@@ -20,6 +18,9 @@ const drag = (input: Partial<DragInput>) =>
 
 const resize = (input: Partial<ResizeInput> & Pick<ResizeInput, 'handle'>) =>
   resizeRect({ start, deltaX: 0, deltaY: 0, options: {}, parentSize: null, ...input })
+
+const resizeTo = (size: ResizeToInput['size'], input: Partial<ResizeToInput> = {}) =>
+  resizeRectTo({ start, size, handle: 'br', options: {}, parentSize: null, ...input })
 
 const step = (input: Partial<StepResizeInput>) =>
   stepResizeRect({
@@ -217,7 +218,7 @@ describe('resizeRect', () => {
     ).toEqual({ x: 90, y: 50, w: 110, h: 50 })
   })
 
-  describe('without anchoring', () => {
+  describe('in grow mode', () => {
     it.each([
       ['tl', { w: 90, h: 30 }],
       ['tm', { w: 100, h: 30 }],
@@ -228,7 +229,7 @@ describe('resizeRect', () => {
       ['bm', { w: 100, h: 70 }],
       ['br', { w: 110, h: 70 }],
     ] as const)('%s grows by the usual delta but never moves the rect', (handle, expected) => {
-      const result = resize({ handle, deltaX: 10, deltaY: 20, anchor: false })
+      const result = resize({ handle, deltaX: 10, deltaY: 20, mode: 'grow' })
       // Same size as the anchored resize, position untouched.
       expect(result).toEqual({ x: start.x, y: start.y, ...expected })
       expect(resize({ handle, deltaX: 10, deltaY: 20 })).toMatchObject(expected)
@@ -237,13 +238,13 @@ describe('resizeRect', () => {
     it('keeps the position for aspect-locked edge handles that act as corners', () => {
       const options = { lockAspectRatio: true }
       // `tm` / `ml` behave like `tl` and would normally move both x and y.
-      expect(resize({ handle: 'tm', deltaY: -10, options, anchor: false })).toEqual({
+      expect(resize({ handle: 'tm', deltaY: -10, options, mode: 'grow' })).toEqual({
         x: 100,
         y: 50,
         w: 120,
         h: 60,
       })
-      expect(resize({ handle: 'ml', deltaX: -20, options, anchor: false })).toEqual({
+      expect(resize({ handle: 'ml', deltaX: -20, options, mode: 'grow' })).toEqual({
         x: 100,
         y: 50,
         w: 120,
@@ -251,7 +252,7 @@ describe('resizeRect', () => {
       })
     })
 
-    it('still compensates when anchor is omitted', () => {
+    it('still compensates when the mode is omitted', () => {
       expect(resize({ handle: 'tl', deltaX: 10, deltaY: 20 })).toEqual({
         x: 110,
         y: 70,
@@ -326,7 +327,7 @@ describe('resizeRect with symmetric edges', () => {
     ['br', 10, { w: 120, h: 70 }],
     ['tl', -10, { w: 120, h: 30 }],
   ] as const)('%s changes the width by twice the delta', (handle, deltaX, expected) => {
-    expect(resize({ handle, deltaX, deltaY: 20, anchor: false, symmetric: true })).toEqual({
+    expect(resize({ handle, deltaX, deltaY: 20, mode: 'symmetric' })).toEqual({
       x: start.x,
       y: start.y,
       ...expected,
@@ -334,25 +335,26 @@ describe('resizeRect with symmetric edges', () => {
   })
 
   it('leaves top / bottom handles alone', () => {
-    expect(
-      resize({ handle: 'bm', deltaX: 10, deltaY: 20, anchor: false, symmetric: true }),
-    ).toEqual({ ...start, h: 70 })
+    expect(resize({ handle: 'bm', deltaX: 10, deltaY: 20, mode: 'symmetric' })).toEqual({
+      ...start,
+      h: 70,
+    })
   })
 
   it('keeps the ratio and the limits', () => {
     const options = { lockAspectRatio: true, maxW: 150 }
-    expect(resize({ handle: 'mr', deltaX: 10, options, anchor: false, symmetric: true })).toEqual({
+    expect(resize({ handle: 'mr', deltaX: 10, options, mode: 'symmetric' })).toEqual({
       ...start,
       w: 120,
       h: 60,
     })
-    expect(resize({ handle: 'mr', deltaX: 40, options, anchor: false, symmetric: true })).toEqual({
+    expect(resize({ handle: 'mr', deltaX: 40, options, mode: 'symmetric' })).toEqual({
       ...start,
       w: 150,
       h: 75,
     })
     // Driven by the vertical movement, as without symmetric edges.
-    expect(resize({ handle: 'bm', deltaY: 10, options, anchor: false, symmetric: true })).toEqual({
+    expect(resize({ handle: 'bm', deltaY: 10, options, mode: 'symmetric' })).toEqual({
       ...start,
       w: 120,
       h: 60,
@@ -370,7 +372,7 @@ describe('stepResizeRect', () => {
   it('moves the left and bottom edges with bl, keeping the right edge in absolute layout', () => {
     expect(step({ handle: 'bl', growW: 5 })).toEqual({ ...start, x: 95, w: 105 })
     expect(step({ handle: 'bl', growH: 5 })).toEqual({ ...start, h: 55 })
-    expect(step({ handle: 'bl', growW: 5, anchor: false })).toEqual({ ...start, w: 105 })
+    expect(step({ handle: 'bl', growW: 5, mode: 'grow' })).toEqual({ ...start, w: 105 })
   })
 
   it('applies the constraints', () => {
@@ -378,7 +380,7 @@ describe('stepResizeRect', () => {
     expect(step({ growW: -5, options, parentSize })).toEqual({ ...start, w: 98 })
     expect(step({ growH: 5, options, parentSize })).toEqual({ ...start, h: 52 })
     expect(step({ growW: 500, options, parentSize })).toEqual({ ...start, w: 200 })
-    expect(step({ growW: 5, options: { disabledW: true } })).toEqual(start)
+    expect(step({ growW: 5, options: { disabledW: true } })).toBeNull()
   })
 
   it.each(['bl', 'br'] as const)('keeps a locked ratio from %s, top edge in place', (handle) => {
@@ -399,6 +401,37 @@ describe('stepResizeRect', () => {
       w: 160,
       h: 80,
     })
-    expect(step({ growW: Infinity }).w).toBe(Infinity)
+    expect(step({ growW: Infinity })).toBeNull()
+  })
+
+  it('returns null for a step that changes nothing', () => {
+    expect(step({})).toBeNull()
+    expect(step({ growW: -5, options: { minW: 100 } })).toBeNull()
+  })
+})
+
+describe('resizeRectTo', () => {
+  it('resizes to the given dimensions, keeping a missing or NaN one', () => {
+    expect(resizeTo({ w: 120 })).toEqual({ ...start, w: 120 })
+    expect(resizeTo({ h: 80 })).toEqual({ ...start, h: 80 })
+    expect(resizeTo({ w: 120, h: 80 })).toEqual({ ...start, w: 120, h: 80 })
+    expect(resizeTo({ w: NaN, h: 80 })).toEqual({ ...start, h: 80 })
+  })
+
+  it('lets a given width drive under the aspect lock, also when it is the current one', () => {
+    const options = { lockAspectRatio: true }
+    expect(resizeTo({ w: 200, h: 10 }, { options })).toEqual({ ...start, w: 200, h: 100 })
+    expect(resizeTo({ w: 100, h: 80 }, { options })).toBeNull()
+    expect(resizeTo({ h: 80 }, { options })).toEqual({ ...start, w: 160, h: 80 })
+  })
+
+  it('resizes to the limits for infinite sizes, but not to an unbounded one', () => {
+    expect(resizeTo({ w: Infinity }, { options: { maxW: 150 } })).toEqual({ ...start, w: 150 })
+    expect(resizeTo({ w: -Infinity }, { options: { minW: 30 } })).toEqual({ ...start, w: 30 })
+    expect(resizeTo({ w: Infinity })).toBeNull()
+  })
+
+  it('returns null when nothing changes', () => {
+    expect(resizeTo({ w: 100, h: 50 })).toBeNull()
   })
 })
