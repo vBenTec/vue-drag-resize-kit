@@ -233,7 +233,7 @@ importers:
         specifier: 1.15.0
         version: 1.15.0(supports-color@7.2.0)
       vitest:
-        specifier: ^5.1.0
+        specifier: ^5.1.1
         version: 5.1.1(@types/node@24.19.2)(@vitest/browser-playwright@5.1.1)(@vitest/ui@5.1.1)(happy-dom@21.0.4)(vite@8.3.8(@types/node@24.19.2)(yaml@2.9.1))
       vue:
         specifier: ^3.5.45
