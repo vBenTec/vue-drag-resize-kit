@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+## 1.3.1 — 2026-11-21
+
 ### Fixed
 
 - A keyboard resize sequence now re-measures the element before its first step, like a pointer
