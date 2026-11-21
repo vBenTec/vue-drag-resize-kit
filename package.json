@@ -1,6 +1,6 @@
 {
   "name": "vue-drag-resize-kit",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "private": false,
   "description": "Draggable and resizable component for Vue 3, with snapping, alignment guides and full TypeScript support.",
   "keywords": [
