@@ -68,6 +68,35 @@ jobs:
         env:
           DIST_TAG: ${{ steps.release.outputs.dist-tag }}
 
+  # The GitHub release, with the version's changelog section as its notes. A job of its own, so
+  # the job that installs and runs dependencies never holds a token that can write to the repo.
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.1
+      - name: Create the GitHub release
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            echo "::notice::A GitHub release for $GITHUB_REF_NAME already exists; leaving it as it is."
+            exit 0
+          fi
+          node scripts/release-notes.ts "${GITHUB_REF_NAME#v}" > "$RUNNER_TEMP/notes.md"
+          if [ "$DIST_TAG" = latest ]; then kind=--latest; else kind=--prerelease; fi
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" "$kind" \
+            --notes-file "$RUNNER_TEMP/notes.md"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DIST_TAG: ${{ needs.publish.outputs.dist-tag }}
+
   # Prereleases keep the docs on the latest stable release.
   docs:
     needs: publish

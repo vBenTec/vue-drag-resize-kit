@@ -9,16 +9,19 @@ Before it installs anything, the workflow fails closed unless:
 - a prerelease version has a named identifier to use as its npm dist-tag (see
   [Prereleases](#prereleases)).
 
-It then runs the full check suite and publishes. A stable release (dist-tag `latest`) then
-deploys the documentation site from the same tag through `.github/workflows/docs.yml`, so the
-site always describes the version on npm. Nothing else is automated.
+It then runs the full check suite and publishes. After that, the `github-release` job creates
+the GitHub release for the tag, with the version's changelog section as its notes
+(`scripts/release-notes.ts`), and a stable release (dist-tag `latest`) deploys the
+documentation site from the same tag through `.github/workflows/docs.yml`, so the site always
+describes the version on npm. Nothing else is automated.
 
 ## 0. Keep the changelog current
 
 User-facing changes add an entry under `## Unreleased` in `CHANGELOG.md` in the same PR that
 makes the change, following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). That way
 the release notes are already written when it is time to release, and nobody has to reconstruct
-them from memory. Call out breaking changes explicitly.
+them from memory. Call out breaking changes explicitly. The version's section becomes the
+GitHub release notes as it is, so write it for users.
 
 ## 1. Open a release PR
 
@@ -62,6 +65,15 @@ and you can reuse the version:
 This is only safe because npm never saw the version. If npm already has it, don't move the tag.
 npm versions are immutable, so bump to a new version and release that instead.
 
+If only the `github-release` job fails, npm already has the version: don't move the tag. Re-run
+the failed job, or create the release by hand with the same notes:
+
+```bash
+node scripts/release-notes.ts X.Y.Z | gh release create vX.Y.Z --verify-tag --title vX.Y.Z --notes-file -
+```
+
+For a prerelease, add `--prerelease`: without it, GitHub marks the release as Latest.
+
 ## 4. Check the documentation site
 
 After the publish job, the `docs` job deploys https://vbentec.github.io/vue-drag-resize-kit/.
@@ -86,9 +98,9 @@ Environments → github-pages → Deployment branches and tags).
 ## Prereleases
 
 A prerelease publishes under the npm dist-tag named by its `--preid` value (`1.1.0-beta.0` →
-`beta`), so it never becomes `latest`. A bare `pnpm version prerelease` without `--preid`
-produces a version like `1.0.1-0`, which has no name to use as a dist-tag. The workflow rejects
-it.
+`beta`), so it never becomes `latest`, and its GitHub release is marked as a pre-release. A bare
+`pnpm version prerelease` without `--preid` produces a version like `1.0.1-0`, which has no name
+to use as a dist-tag. The workflow rejects it.
 
 ## Dependency updates (Renovate)
 

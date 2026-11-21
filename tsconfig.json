@@ -23,6 +23,7 @@
     "docs/.vitepress/*.ts",
     "docs/.vitepress/theme",
     "docs/demos",
+    "scripts",
     "vite.config.ts",
     "rolldown.dts.config.ts"
   ],

@@ -17,6 +17,7 @@ Vue 3 draggable/resizable component library (`vue-drag-resize-kit`), TypeScript,
 - `src/index.ts`: public API. Keep exports in sync with `src/index.test-d.ts`.
 - `src/test-utils/`: shared test helpers.
 - `playground/`: local demo app (`pnpm dev-vue`).
+- `scripts/`: release tooling run by CI (`release-notes.ts`, see `RELEASE.md`).
 - `docs/`: VitePress documentation site (`pnpm docs:dev`). See [Documentation](#documentation).
 
 Domain terms (gesture, guides, member, snap session) are defined in `GLOSSARY.md`.
