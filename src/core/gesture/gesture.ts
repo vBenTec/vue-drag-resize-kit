@@ -1,4 +1,4 @@
-import type { Gesture, GestureHost, PointerGesture, Rect, StepTarget } from './types'
+import type { Gesture, GestureHost, PointerGesture, Rect, StepTarget } from '../types'
 
 /**
  * The gestures of one element, at most one at a time: a pointer gesture, a key sequence or a

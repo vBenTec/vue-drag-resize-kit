@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import type { DragInput, Guides, Rect, ResizeInput, ResizeToInput, StepResizeInput } from '../types'
 import {
   dragRect,
   getResizeEdges,
@@ -8,7 +9,6 @@ import {
   resizeRectTo,
   stepResizeRect,
 } from './positioning'
-import type { DragInput, Guides, Rect, ResizeInput, ResizeToInput, StepResizeInput } from './types'
 
 const parentSize = { width: 300, height: 200 }
 const start: Rect = { x: 100, y: 50, w: 100, h: 50 }

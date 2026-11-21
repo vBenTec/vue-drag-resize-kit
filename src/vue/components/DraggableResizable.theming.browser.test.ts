@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { h } from 'vue'
 
-import { ALL_HANDLES } from '../../core/handles'
+import { ALL_HANDLES } from '../../core/handles/handles'
 import { handleOf } from '../../test-utils'
 import {
   centreOf,

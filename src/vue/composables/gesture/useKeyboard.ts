@@ -1,5 +1,5 @@
-import { getInlineEndCorner } from '../../core/direction'
-import type { UseKeyboardOptions } from '../types'
+import { getInlineEndCorner } from '../../../core/handles/direction'
+import type { UseKeyboardOptions } from '../../types'
 
 /** Physical direction of each arrow key. */
 const ARROWS: Partial<Record<string, [x: number, y: number]>> = {

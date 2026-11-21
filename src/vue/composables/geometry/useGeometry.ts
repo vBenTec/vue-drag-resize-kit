@@ -1,4 +1,4 @@
-import type { UseGeometryOptions } from '../types'
+import type { UseGeometryOptions } from '../../types'
 import { useBoundarySize } from './useBoundarySize'
 import { useDirection } from './useDirection'
 import { useNaturalSize } from './useNaturalSize'

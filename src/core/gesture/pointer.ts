@@ -1,4 +1,4 @@
-import type { PointerSessionHandlers } from './types'
+import type { PointerSessionHandlers } from '../types'
 
 /**
  * Follows the pointer that triggered `startEvent` until it is released. Listeners live on the

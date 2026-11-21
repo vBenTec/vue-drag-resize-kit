@@ -1,11 +1,11 @@
-import { isAspectLocked } from './positioning'
+import { isAspectLocked } from '../positioning/positioning'
 import type {
   ConstraintOptions,
   Direction,
   LogicalResizeHandle,
   PhysicalResizeHandle,
   ResizeHandle,
-} from './types'
+} from '../types'
 
 export const ALL_HANDLES = [
   'tl',
