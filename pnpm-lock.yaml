@@ -200,7 +200,7 @@ importers:
         specifier: ^9.1.7
         version: 9.1.7
       lint-staged:
-        specifier: ^17.6.1
+        specifier: ^17.6.2
         version: 17.6.2
       oxfmt:
         specifier: ^0.79.0
